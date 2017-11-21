@@ -4,8 +4,6 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(azure_iot_sdks)
 
-# Include the common build rules for the C SDK
-include(c-utility/configs/azure_iot_build_rules.cmake)
 
 include("configs/azure_iot_sdksFunctions.cmake")
 
@@ -216,6 +214,7 @@ macro(compileAsC99)
     set (CMAKE_CXX_STANDARD 11)
   endif()
 endmacro(compileAsC99)
+compileAsC99()
 
 macro(compileAsC11)
   if (CMAKE_VERSION VERSION_LESS "3.1")
