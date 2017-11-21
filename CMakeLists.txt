@@ -64,6 +64,26 @@ if ((NOT HAVE_STDINT_H) OR (NOT HAVE_STDBOOL_H))
     include_directories(${SHARED_UTIL_INC_FOLDER}/azure_c_shared_utility/windowsce)
 endif()
 
+# System-specific compiler flags
+if(MSVC)
+    if (WINCE) # Be lax with WEC 2013 compiler
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3")
+        add_definitions(-DWIN32) #WEC 2013
+    ELSE()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
+    endif()
+elseif(UNIX) #LINUX OR APPLE
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
+    #if(NOT (IN_OPENWRT OR APPLE))
+    #    set (CMAKE_C_FLAGS "-D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
+    #endif()
+endif()
+
+enable_testing()
+
 
 
 
