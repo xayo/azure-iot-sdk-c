@@ -15,21 +15,7 @@
 
 #ifdef AZIOT_LINUX
 #include <unistd.h>
-
-#ifndef _BSD_SOURCE
-#define _BSD_SOURCE
-#define SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
-#endif
-
-#define _DEFAULT_SOURCE
 #include <net/if.h>
-#undef _DEFAULT_SOURCE
-
-#ifdef SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
-#undef _BSD_SOURCE
-#undef SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
-#endif
-
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
