@@ -77,9 +77,9 @@ if(MSVC)
 elseif(UNIX) #LINUX OR APPLE
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
-    #if(NOT (IN_OPENWRT OR APPLE))
-    #    set (CMAKE_C_FLAGS "-D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
-    #endif()
+    if(NOT (IN_OPENWRT OR APPLE))
+        set (CMAKE_C_FLAGS "-D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
+    endif()
 endif()
 
 enable_testing()

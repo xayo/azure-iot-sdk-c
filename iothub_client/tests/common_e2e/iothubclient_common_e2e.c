@@ -14,6 +14,7 @@
 #endif
 
 #ifdef AZIOT_LINUX
+#undef _POSIX_C_SOURCE
 #include <unistd.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
