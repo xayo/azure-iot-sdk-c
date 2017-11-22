@@ -14,12 +14,46 @@
 #endif
 
 #ifdef AZIOT_LINUX
-#include <unistd.h>
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE
+#define SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
+#endif
+
+#define _DEFAULT_SOURCE
 #include <net/if.h>
+#undef _DEFAULT_SOURCE
+
+#ifdef SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
+#undef _BSD_SOURCE
+#undef SOCKETIO_BERKELEY_UNDEF_BSD_SOURCE
+#endif
+
+#include <signal.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
+
+
+
+
+
+
+
+
+
 #endif
 
 #include "testrunnerswitcher.h"

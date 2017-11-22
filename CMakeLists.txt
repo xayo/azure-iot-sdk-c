@@ -7,7 +7,8 @@ project(azure_iot_sdks)
 # Include the common build rules for the C SDK
 include(c-utility/configs/azure_iot_build_rules.cmake)
 
-STRING( REPLACE "-D_POSIX_C_SOURCE=200112L" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS} )
+
+#STRING( REPLACE "-D_POSIX_C_SOURCE=200112L" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS} )
 
 include("configs/azure_iot_sdksFunctions.cmake")
 
