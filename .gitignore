@@ -205,3 +205,17 @@ build_all/windows/nuget.exe
 /cmake
 /build
 *.cert
+build_all/ios/samples/AMQPWS-Client-Sample/AMQPWS Client Sample.xcodeproj/xcuserdata
+build_all/ios/samples/AMQPWS-Client-Sample/Pods
+build_all/ios/samples/AMQPWS-Client-Sample/Podfile.lock
+build_all/ios/samples/AMQP-Client-Sample/Pods
+build_all/ios/samples/AMQP-Client-Sample/AMQP Client Sample.xcodeproj/xcuserdata
+build_all/ios/samples/File-Upload-Sample/Pods
+build_all/ios/samples/File-Upload-Sample/File Upload Sample.xcodeproj/xcuserdata
+build_all/ios/samples/HTTP-Client-Sample/HTTP Client Sample.xcodeproj/xcuserdata
+Manifest.lock
+build_all/ios/samples/HTTP-Client-Sample/Pods
+build_all/ios/samples/MQTT-Client-Sample/Pods
+build_all/ios/samples/MQTT-Client-Sample/MQTT Client Sample.xcodeproj/xcuserdata
+build_all/ios/samples/MQTTWS-Client-Sample/Pods
+build_all/ios/samples/MQTTWS-Client-Sample/MQTTWS Client Sample.xcodeproj/xcuserdata
