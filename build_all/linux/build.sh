@@ -151,7 +151,7 @@ then
   make --jobs=$MAKE_CORES
 
   # Only for testing E2E behaviour !!! 
-  TEST_CORES=16
+  TEST_CORES=4
 
   if [[ $run_valgrind == 1 ]] ;
   then
