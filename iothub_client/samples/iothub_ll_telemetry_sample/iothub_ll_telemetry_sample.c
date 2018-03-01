@@ -12,15 +12,11 @@
 
 #ifdef USE_MQTT
     #include "iothubtransportmqtt.h"
-    #ifdef USE_WEBSOCKETS
-        #include "iothubtransportmqtt_websockets.h"
-    #endif
+    #include "iothubtransportmqtt_websockets.h"
 #endif
 #ifdef USE_AMQP
     #include "iothubtransportamqp.h"
-    #ifdef USE_WEBSOCKETS
-        #include "iothubtransportamqp_websockets.h"
-    #endif
+    #include "iothubtransportamqp_websockets.h"
 #endif
 #ifdef USE_HTTP
     #include "iothubtransporthttp.h"
