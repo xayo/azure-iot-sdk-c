@@ -2,10 +2,10 @@
 
 This document describes how to create a program that uses the *azure-iot-sdk-c-dev* package on Ubuntu versions 15.04  and 15.10. The package contains the binaries you need to build an IoT Hub client application using C. The document describes how to install the package using **apt-get** and then build an application using **CMake**.
 
-Before you start, make sure you have **CMake**, **g++**, and **gcc** installed on your development machine:
+Before you start, make sure you have the necessary dependencies installed on your development machine:
 
 ```
-sudo apt-get install cmake gcc g++
+sudo apt-get install cmake build-essential uuid-dev
 ```
 
 ## Update and install the azure-iot-sdk-c-dev package on your machine
@@ -61,6 +61,7 @@ The following steps outline how you can use CMake to build an IoT Hub client app
         curl
         ssl
         crypto
+        uuid
         m
     )
     ```
