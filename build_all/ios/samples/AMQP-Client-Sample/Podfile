@@ -12,5 +12,5 @@ target 'AMQP Client Sample' do
   pod 'AzureIoTUtility'
   #pod 'AzureIoTuMqtt'
   pod 'AzureIoTuAmqp'
-  pod 'AzureIoTHubClient', '1.0.0-pre-release-1.0.8'
+  pod 'AzureIoTHubClient'
 end
