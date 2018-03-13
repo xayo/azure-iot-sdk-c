@@ -11,7 +11,7 @@
 
 Change to a location where you would like your samples, and run
 
-`git clone -b ios-samples https://github.com/Azure/azure-iot-sdk-c.git`
+`git clone https://github.com/Azure/azure-iot-sdk-c.git`
 
 It is not necessary to do a recursive clone to build the iOS samples.
 
