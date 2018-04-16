@@ -25,6 +25,13 @@
 
 #include "azure_c_shared_utility/macro_utils.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
+#include "azure_c_shared_utility/agenttime.h"
+#include "azure_c_shared_utility/xio.h"
+#include "azure_c_shared_utility/doublylinkedlist.h"
+#include "iothub_message.h"
+#include "iothub_transport_ll.h"
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -101,24 +108,6 @@ DEFINE_ENUM(IOTHUB_PROCESS_ITEM_RESULT, IOTHUB_PROCESS_ITEM_RESULT_VALUE);
 *		   IoT Hub sends a message to the device.
 */
 DEFINE_ENUM(IOTHUBMESSAGE_DISPOSITION_RESULT, IOTHUBMESSAGE_DISPOSITION_RESULT_VALUES);
-
-#ifdef __cplusplus
-}
-#endif
-
-#include "azure_c_shared_utility/agenttime.h"
-#include "azure_c_shared_utility/xio.h"
-#include "azure_c_shared_utility/doublylinkedlist.h"
-#include "iothub_message.h"
-#include "iothub_transport_ll.h"
-//#include "iothub_client_authorization.h"
-#include <stddef.h>
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 
 #define IOTHUB_CLIENT_IOTHUB_METHOD_STATUS_VALUES \
     IOTHUB_CLIENT_IOTHUB_METHOD_STATUS_SUCCESS,   \
