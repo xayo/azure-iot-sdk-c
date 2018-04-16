@@ -381,6 +381,10 @@ extern "C"
 
 #endif /* DONT_USE_UPLOADTOBLOB */
 
+    MOCKABLE_FUNCTION(, TRANSPORT_HANDLE, IoTHubTransport_Create, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol, const char*, iotHubName, const char*, iotHubSuffix);
+    MOCKABLE_FUNCTION(, void, IoTHubTransport_Destroy, TRANSPORT_HANDLE, transportHandle);
+    MOCKABLE_FUNCTION(, TRANSPORT_LL_HANDLE, IoTHubTransport_GetLLTransport, TRANSPORT_HANDLE, transportHandle);
+
 #ifdef __cplusplus
 }
 #endif
