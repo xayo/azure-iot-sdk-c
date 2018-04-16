@@ -15,6 +15,7 @@
 
 #include "iothub_message.h"
 #include "iothub_client_ll.h"
+#include "internal\iothub_transport_ll_private.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -71,14 +72,14 @@ union IOTHUB_IDENTITY_INFO_TAG
     IOTHUB_MESSAGE_LIST* iothub_message;
 };
 
-struct IOTHUBTRANSPORT_CONFIG_TAG;
-struct IOTHUBTRANSPORT_CONFIG_TAG IOTHUBTRANSPORT_CONFIG;
-struct IOTHUBTRANSPORT_CONFIG_TAG
+#if 0
+typedef struct IOTHUBTRANSPORT_CONFIG_TAG
 {
     const IOTHUB_CLIENT_CONFIG* upperConfig;
     PDLIST_ENTRY waitingToSend;
     IOTHUB_AUTHORIZATION_HANDLE auth_module_handle;
-};
+} IOTHUBTRANSPORT_CONFIG;
+#endif
 
 #ifdef __cplusplus
 }

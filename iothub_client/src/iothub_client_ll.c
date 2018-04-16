@@ -26,7 +26,7 @@
 #endif
 
 #ifndef DONT_USE_UPLOADTOBLOB
-#include "iothub_client_ll_uploadtoblob.h"
+#include "internal/iothub_client_ll_uploadtoblob.h"
 #endif
 
 #define LOG_ERROR_RESULT LogError("result = %s", ENUM_TO_STRING(IOTHUB_CLIENT_RESULT, result));

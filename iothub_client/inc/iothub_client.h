@@ -20,7 +20,6 @@ typedef struct IOTHUB_CLIENT_INSTANCE_TAG* IOTHUB_CLIENT_HANDLE;
 #define IOTHUB_CLIENT_INSTANCE_TYPE
 #endif // IOTHUB_CLIENT_INSTANCE
 
-#include "iothubtransport.h"
 #include <stddef.h>
 #include <stdint.h>
 
