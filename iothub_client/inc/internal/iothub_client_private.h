@@ -15,7 +15,7 @@
 
 #include "iothub_message.h"
 #include "iothub_client_ll.h"
-#include "internal\iothub_transport_ll_private.h"
+#include "internal/iothub_transport_ll_private.h"
 
 #ifdef __cplusplus
 extern "C"
