@@ -11,15 +11,15 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "iothub_client.h"
 #include "iothub_client_ll.h"
-#include "iothub_client_private.h"
-#include "iothubtransport.h"
+#include "internal/iothub_client_private.h"
+#include "internal/iothubtransport.h"
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/lock.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/singlylinkedlist.h"
 #include "azure_c_shared_utility/vector.h"
 #ifdef USE_PROV_MODULE
-#include "iothub_client_hsm_ll.h"
+#include "internal/iothub_client_hsm_ll.h"
 #endif
 
 struct IOTHUB_QUEUE_CONTEXT_TAG;

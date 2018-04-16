@@ -7,6 +7,7 @@
 
 typedef void* TRANSPORT_LL_HANDLE;
 typedef void* IOTHUB_DEVICE_HANDLE;
+typedef void* IOTHUBTRANSPORT_CONFIG;
 
 struct TRANSPORT_PROVIDER_TAG;
 typedef struct TRANSPORT_PROVIDER_TAG TRANSPORT_PROVIDER;
@@ -19,7 +20,7 @@ typedef void* METHOD_HANDLE;
 #include "azure_c_shared_utility/doublylinkedlist.h"
 #include "azure_c_shared_utility/strings.h"
 #include "iothub_message.h"
-#include "iothub_client_authorization.h"
+//#include "iothub_client_authorization.h"
 
 struct MESSAGE_DISPOSITION_CONTEXT_TAG;
 typedef struct MESSAGE_DISPOSITION_CONTEXT_TAG* MESSAGE_DISPOSITION_CONTEXT_HANDLE;
@@ -36,6 +37,13 @@ extern "C"
 {
 #endif
 
+// struct IOTHUBTRANSPORT_CONFIG_TAG;
+// typedef struct IOTHUBTRANSPORT_CONFIG_TAG IOTHUBTRANSPORT_CONFIG;
+
+//struct IOTHUB_DEVICE_HANDLE_TAG;
+//typedef struct IOTHUB_DEVICE_HANDLE_TAG IOTHUB_DEVICE_HANDLE;
+
+#if 0 // BUGBUG 
     /** @brief	This struct captures device configuration. */
     typedef struct IOTHUB_DEVICE_CONFIG_TAG
     {
@@ -50,6 +58,7 @@ extern "C"
 
         IOTHUB_AUTHORIZATION_HANDLE authorization_module; // with either SAS Token, x509 Certs, and Device SAS Token
     } IOTHUB_DEVICE_CONFIG;
+#endif
 
     typedef STRING_HANDLE (*pfIoTHubTransport_GetHostname)(TRANSPORT_LL_HANDLE handle);
     typedef IOTHUB_CLIENT_RESULT(*pfIoTHubTransport_SetOption)(TRANSPORT_LL_HANDLE handle, const char *optionName, const void* value);

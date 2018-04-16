@@ -16,7 +16,7 @@
 #include "azure_prov_client/iothub_auth_client.h"
 #endif
 
-#include "iothub_client_authorization.h"
+#include "internal/iothub_client_authorization.h"
 
 #define DEFAULT_SAS_TOKEN_EXPIRY_TIME_SECS          3600
 #define INDEFINITE_TIME                             ((time_t)(-1))

@@ -65,8 +65,8 @@ DEFINE_ENUM(IOTHUB_CLIENT_RESULT, IOTHUB_CLIENT_RESULT_VALUES);
 */
 DEFINE_ENUM(IOTHUB_CLIENT_RETRY_POLICY, IOTHUB_CLIENT_RETRY_POLICY_VALUES);
 
-struct IOTHUBTRANSPORT_CONFIG_TAG;
-typedef struct IOTHUBTRANSPORT_CONFIG_TAG IOTHUBTRANSPORT_CONFIG;
+// BUGBUG struct IOTHUBTRANSPORT_CONFIG_TAG;
+// typedef struct IOTHUBTRANSPORT_CONFIG_TAG IOTHUBTRANSPORT_CONFIG;
 
 typedef struct IOTHUB_CLIENT_LL_HANDLE_DATA_TAG* IOTHUB_CLIENT_LL_HANDLE;
 
@@ -111,7 +111,7 @@ DEFINE_ENUM(IOTHUBMESSAGE_DISPOSITION_RESULT, IOTHUBMESSAGE_DISPOSITION_RESULT_V
 #include "azure_c_shared_utility/doublylinkedlist.h"
 #include "iothub_message.h"
 #include "iothub_transport_ll.h"
-#include "iothub_client_authorization.h"
+//#include "iothub_client_authorization.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -270,12 +270,13 @@ DEFINE_ENUM(IOTHUB_CLIENT_IOTHUB_METHOD_STATUS, IOTHUB_CLIENT_IOTHUB_METHOD_STAT
     } IOTHUB_CLIENT_DEVICE_CONFIG;
 
     /** @brief	This struct captures IoTHub transport configuration. */
-    struct IOTHUBTRANSPORT_CONFIG_TAG
+    /*struct IOTHUBTRANSPORT_CONFIG_TAG
     {
         const IOTHUB_CLIENT_CONFIG* upperConfig;
         PDLIST_ENTRY waitingToSend;
         IOTHUB_AUTHORIZATION_HANDLE auth_module_handle;
     };
+    */ // BUGBUG above
 
 
     /**

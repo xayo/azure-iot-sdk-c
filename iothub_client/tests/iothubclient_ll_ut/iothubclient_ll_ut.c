@@ -61,7 +61,7 @@ void* my_gballoc_realloc(void* ptr, size_t size)
 #define ENABLE_MOCKS
 
 #ifndef DONT_USE_UPLOADTOBLOB
-#include "iothub_client_ll_uploadtoblob.h"
+#include "internal/iothub_client_ll_uploadtoblob.h"
 #endif
 
 MOCKABLE_FUNCTION(, void, test_event_confirmation_callback, IOTHUB_CLIENT_CONFIRMATION_RESULT, result, void*, userContextCallback);
