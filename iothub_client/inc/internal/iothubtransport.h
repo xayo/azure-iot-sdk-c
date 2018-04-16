@@ -4,8 +4,6 @@
 #ifndef IOTHUB_TRANSPORT_H
 #define IOTHUB_TRANSPORT_H
 
-typedef struct TRANSPORT_HANDLE_DATA_TAG* TRANSPORT_HANDLE;
-
 
 #include "azure_c_shared_utility/lock.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
