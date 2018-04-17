@@ -161,13 +161,10 @@
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\Microsoft.Azure.C.SharedUtility.1.1.0\build\native\Microsoft.Azure.C.SharedUtility.targets" Condition="Exists('packages\Microsoft.Azure.C.SharedUtility.1.1.0\build\native\Microsoft.Azure.C.SharedUtility.targets')" />
     <Import Project="packages\Microsoft.Azure.IoTHub.IoTHubClient.1.2.0\build\native\Microsoft.Azure.IoTHub.IoTHubClient.targets" Condition="Exists('packages\Microsoft.Azure.IoTHub.IoTHubClient.1.2.0\build\native\Microsoft.Azure.IoTHub.IoTHubClient.targets')" />
-<<<<<<< HEAD:iothub_client/samples/iothub_ll_client_x509_sample/windows/iothub_ll_client_x509_sample.vcxproj
     <Import Project="packages\Microsoft.Azure.umqtt.1.1.0\build\native\Microsoft.Azure.umqtt.targets" Condition="Exists('packages\Microsoft.Azure.umqtt.1.1.0\build\native\Microsoft.Azure.umqtt.targets')" />
     <Import Project="packages\Microsoft.Azure.IoTHub.MqttTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.MqttTransport.targets" Condition="Exists('packages\Microsoft.Azure.IoTHub.MqttTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.MqttTransport.targets')" />
     <Import Project="packages\Microsoft.Azure.uamqp.1.1.0\build\native\Microsoft.Azure.uamqp.targets" Condition="Exists('packages\Microsoft.Azure.uamqp.1.1.0\build\native\Microsoft.Azure.uamqp.targets')" />
     <Import Project="packages\Microsoft.Azure.IoTHub.AmqpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.AmqpTransport.targets" Condition="Exists('packages\Microsoft.Azure.IoTHub.AmqpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.AmqpTransport.targets')" />
-=======
->>>>>>> 74dd314d... Moving samples back to using older packages:iothub_client/samples/iothub_client_sample_x509/windows/iothub_client_sample_x509.vcxproj
     <Import Project="packages\Microsoft.Azure.IoTHub.HttpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.HttpTransport.targets" Condition="Exists('packages\Microsoft.Azure.IoTHub.HttpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.HttpTransport.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -176,13 +173,10 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\Microsoft.Azure.C.SharedUtility.1.1.0\build\native\Microsoft.Azure.C.SharedUtility.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.C.SharedUtility.1.1.0\build\native\Microsoft.Azure.C.SharedUtility.targets'))" />
     <Error Condition="!Exists('packages\Microsoft.Azure.IoTHub.IoTHubClient.1.2.0\build\native\Microsoft.Azure.IoTHub.IoTHubClient.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.IoTHub.IoTHubClient.1.2.0\build\native\Microsoft.Azure.IoTHub.IoTHubClient.targets'))" />
-<<<<<<< HEAD:iothub_client/samples/iothub_ll_client_x509_sample/windows/iothub_ll_client_x509_sample.vcxproj
     <Error Condition="!Exists('packages\Microsoft.Azure.umqtt.1.1.0\build\native\Microsoft.Azure.umqtt.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.umqtt.1.1.0\build\native\Microsoft.Azure.umqtt.targets'))" />
     <Error Condition="!Exists('packages\Microsoft.Azure.IoTHub.MqttTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.MqttTransport.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.IoTHub.MqttTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.MqttTransport.targets'))" />
     <Error Condition="!Exists('packages\Microsoft.Azure.uamqp.1.1.0\build\native\Microsoft.Azure.uamqp.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.uamqp.1.1.0\build\native\Microsoft.Azure.uamqp.targets'))" />
     <Error Condition="!Exists('packages\Microsoft.Azure.IoTHub.AmqpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.AmqpTransport.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.IoTHub.AmqpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.AmqpTransport.targets'))" />
-=======
->>>>>>> 74dd314d... Moving samples back to using older packages:iothub_client/samples/iothub_client_sample_x509/windows/iothub_client_sample_x509.vcxproj
     <Error Condition="!Exists('packages\Microsoft.Azure.IoTHub.HttpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.HttpTransport.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Azure.IoTHub.HttpTransport.1.2.0\build\native\Microsoft.Azure.IoTHub.HttpTransport.targets'))" />
   </Target>
 </Project>
