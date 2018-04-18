@@ -382,35 +382,35 @@ TEST_SUITE_CLEANUP(TestClassCleanup)
 }
 
 #ifdef TEST_MQTT
-TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_multithreaded)
-{
-    e2e_uploadtoblob_test_multiple_simultaneous_uploads(MQTT_Protocol);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_sas)
-{
-    e2e_uploadtoblob_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_WS_UploadToBlob_sas)
-{
-    e2e_uploadtoblob_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlobEx)
-{
-    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, true, false);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlob)
-{
-    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, false, false);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlobExWithAbort)
-{
-    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, true, true);
-}
+//TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_multithreaded)
+//{
+//    e2e_uploadtoblob_test_multiple_simultaneous_uploads(MQTT_Protocol);
+//}
+//
+//TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_sas)
+//{
+//    e2e_uploadtoblob_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
+//}
+//
+//TEST_FUNCTION(IoTHub_MQTT_WS_UploadToBlob_sas)
+//{
+//    e2e_uploadtoblob_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
+//}
+//
+//TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlobEx)
+//{
+//    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, true, false);
+//}
+//
+//TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlob)
+//{
+//    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, false, false);
+//}
+//
+//TEST_FUNCTION(IoTHub_MQTT_UploadMultipleBlocksToBlobExWithAbort)
+//{
+//    e2e_uploadtoblob_multiblock_test(MQTT_Protocol, true, true);
+//}
 
 #ifndef __APPLE__
 TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_x509)
