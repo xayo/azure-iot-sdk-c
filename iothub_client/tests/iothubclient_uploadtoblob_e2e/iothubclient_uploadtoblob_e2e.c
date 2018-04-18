@@ -382,10 +382,10 @@ TEST_SUITE_CLEANUP(TestClassCleanup)
 }
 
 #ifdef TEST_MQTT
-//TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_multithreaded)
-//{
-//    e2e_uploadtoblob_test_multiple_simultaneous_uploads(MQTT_Protocol);
-//}
+TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_multithreaded)
+{
+    e2e_uploadtoblob_test_multiple_simultaneous_uploads(MQTT_Protocol);
+}
 //
 //TEST_FUNCTION(IoTHub_MQTT_UploadToBlob_sas)
 //{
