@@ -7,6 +7,7 @@
 #include "iothub_client_options.h"
 #include "iothub_message.h"
 #include "azure_c_shared_utility/threadapi.h"
+#include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/shared_util_options.h"
@@ -17,10 +18,10 @@ and removing calls to _DoWork will yield the same results. */
 
 // The protocol you wish to use should be uncommented
 //
-#define SAMPLE_MQTT
+//#define SAMPLE_MQTT
 //#define SAMPLE_MQTT_OVER_WEBSOCKETS
 //#define SAMPLE_AMQP
-//#define SAMPLE_AMQP_OVER_WEBSOCKETS
+#define SAMPLE_AMQP_OVER_WEBSOCKETS
 //#define SAMPLE_HTTP
 
 #ifdef SAMPLE_MQTT
@@ -44,7 +45,7 @@ and removing calls to _DoWork will yield the same results. */
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
 
 /* Paste in the your iothub connection string  */
-static const char* connectionString = "[device connection string]";
+static const char* connectionString = "";
 #define MESSAGE_COUNT        5
 static bool g_continueRunning = true;
 static size_t g_message_count_send_confirmations = 0;
@@ -54,7 +55,7 @@ static void send_confirm_callback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, void
     (void)userContextCallback;
     // When a message is sent this callback will get envoked
     g_message_count_send_confirmations++;
-    (void)printf("Confirmation callback received for message %zu with result %s\r\n", g_message_count_send_confirmations, ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
+    LogError("Confirmation callback received for message %zu with result %s\r\n", g_message_count_send_confirmations, ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
 }
 
 int main(void)
@@ -93,8 +94,8 @@ int main(void)
     // Set any option that are neccessary.
     // For available options please see the iothub_sdk_options.md documentation
 
-    //bool traceOn = true;
-    //IoTHubClient_LL_SetOption(iothub_ll_handle, OPTION_LOG_TRACE, &traceOn);
+    bool traceOn = true;
+    IoTHubClient_LL_SetOption(iothub_ll_handle, OPTION_LOG_TRACE, &traceOn);
 
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
     // Setting the Trusted Certificate.  This is only necessary on system with without
@@ -110,9 +111,11 @@ int main(void)
     //IoTHubClient_LL_SetOption(iothub_ll_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
 #endif
 
+    time_t t0 = time(NULL);
+
     do
     {
-        if (messages_sent < MESSAGE_COUNT)
+        if ((messages_sent == 0 || difftime(time(NULL), t0) > 300.0) && messages_sent < MESSAGE_COUNT)
         {
             // Construct the iothub message from a string or a byte array
             message_handle = IoTHubMessage_CreateFromString(telemetry_msg);
@@ -128,13 +131,15 @@ int main(void)
             MAP_HANDLE propMap = IoTHubMessage_Properties(message_handle);
             Map_AddOrUpdate(propMap, "property_key", "property_value");
 
-            (void)printf("Sending message %d to IoTHub\r\n", (int)(messages_sent + 1));
+            LogError("Sending message %d to IoTHub\r\n", (int)(messages_sent + 1));
+
             IoTHubClient_LL_SendEventAsync(iothub_ll_handle, message_handle, send_confirm_callback, NULL);
 
             // The message is copied to the sdk so the we can destroy it
             IoTHubMessage_Destroy(message_handle);
 
             messages_sent++;
+            t0 = time(NULL);
         }
         else if (g_message_count_send_confirmations >= MESSAGE_COUNT)
         {
