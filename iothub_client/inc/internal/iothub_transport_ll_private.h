@@ -31,12 +31,12 @@ extern "C"
 {
 #endif
 
-	typedef struct IOTHUBTRANSPORT_CONFIG_TAG
-	{
-	    const IOTHUB_CLIENT_CONFIG* upperConfig;
-	    PDLIST_ENTRY waitingToSend;
-	    IOTHUB_AUTHORIZATION_HANDLE auth_module_handle;
-	} IOTHUBTRANSPORT_CONFIG;
+    typedef struct IOTHUBTRANSPORT_CONFIG_TAG
+    {
+        const IOTHUB_CLIENT_CONFIG* upperConfig;
+        PDLIST_ENTRY waitingToSend;
+        IOTHUB_AUTHORIZATION_HANDLE auth_module_handle;
+    } IOTHUBTRANSPORT_CONFIG;
 
 
     /** @brief	This struct captures device configuration. */

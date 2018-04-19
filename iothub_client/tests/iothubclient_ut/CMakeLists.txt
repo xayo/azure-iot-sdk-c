@@ -16,6 +16,7 @@ include_directories(${SHARED_UTIL_REAL_TEST_FOLDER})
 
 set(${theseTestsName}_c_files
     ../../src/iothub_client.c
+    ../../src/iothubtransport.c
     ${SHARED_UTIL_REAL_TEST_FOLDER}/real_crt_abstractions.c
     ${SHARED_UTIL_REAL_TEST_FOLDER}/real_vector.c
 )

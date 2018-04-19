@@ -9,7 +9,7 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 
 #include "iothub_client_ll.h"
-#include "iothub_client_private.h"
+#include "internal/iothub_client_private.h"
 #include "internal/iothub_transport_ll_private.h"
 
 #ifndef IOTHUB_CLIENT_INSTANCE_TYPE

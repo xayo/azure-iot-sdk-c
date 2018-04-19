@@ -12,7 +12,7 @@ extern "C" {
 
 #include "azure_c_shared_utility/umock_c_prod.h"
 #include "azure_c_shared_utility/buffer_.h"
-#include "azure_prov_client/prov_transport.h"
+#include "azure_prov_client/internal/prov_transport.h"
 
     typedef char*(*TPM_CHALLENGE_CALLBACK)(BUFFER_HANDLE data_handle, void* user_ctx);
 

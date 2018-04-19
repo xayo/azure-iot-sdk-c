@@ -33,11 +33,11 @@ static void my_gballoc_free(void* ptr)
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/xio.h"
 #include "azure_c_shared_utility/http_proxy_io.h"
-#include "azure_prov_client/prov_transport.h"
+#include "azure_prov_client/internal/prov_transport.h"
 #include "azure_umqtt_c/mqtt_client.h"
 #undef ENABLE_MOCKS
 
-#include "azure_prov_client/prov_transport_mqtt_common.h"
+#include "azure_prov_client/internal/prov_transport_mqtt_common.h"
 
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"

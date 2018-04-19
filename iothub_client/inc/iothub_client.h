@@ -257,11 +257,11 @@ extern "C"
     *                 keep alive interval for given time.
     *                 If it is not set then the default 240 sec applies. 
     *                 If it is set to zero the server will not send keep alive messages to the client.
-	*			    - @b cl2svc_keep_alive_send_ratio - the AMQP client side keep alive interval in seconds.
-	*                 After the connection established the server requests the client to set the
-	*                 keep alive interval for given time.
-	*                 If it is not set then the default ratio of 1/2 is applied.
-	*                 The ratio has to be greater than 0.0 and equal to or less than 0.9
+    *			    - @b cl2svc_keep_alive_send_ratio - the AMQP client side keep alive interval in seconds.
+    *                 After the connection established the server requests the client to set the
+    *                 keep alive interval for given time.
+    *                 If it is not set then the default ratio of 1/2 is applied.
+    *                 The ratio has to be greater than 0.0 and equal to or less than 0.9
 
     * @return	IOTHUB_CLIENT_OK upon success or an error code upon failure.
     */
@@ -383,6 +383,10 @@ extern "C"
 
     MOCKABLE_FUNCTION(, TRANSPORT_HANDLE, IoTHubTransport_Create, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol, const char*, iotHubName, const char*, iotHubSuffix);
     MOCKABLE_FUNCTION(, void, IoTHubTransport_Destroy, TRANSPORT_HANDLE, transportHandle);
+
+    /**
+    *
+    */
     MOCKABLE_FUNCTION(, TRANSPORT_LL_HANDLE, IoTHubTransport_GetLLTransport, TRANSPORT_HANDLE, transportHandle);
 
 #ifdef __cplusplus

@@ -13,7 +13,7 @@
 #include "azure_c_shared_utility/shared_util_options.h"
 
 #ifdef USE_PROV_MODULE
-#include "azure_prov_client/iothub_auth_client.h"
+#include "azure_prov_client/internal/iothub_auth_client.h"
 #endif
 
 #include "internal/iothub_client_authorization.h"
