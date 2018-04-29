@@ -60,39 +60,4 @@ TEST_FUNCTION(IoTHub_MQTT_Modules_RecvMessage_E2ETest_sas_urlDecode)
     e2e_recv_message_test_sas(MQTT_WebSocket_Protocol);
 }
 
-#ifndef __APPLE__
-TEST_FUNCTION(IoTHub_MQTT_Modules_SendEvent_e2e_x509)
-{
-#ifdef AZIOT_LINUX
-        g_e2e_test_options.set_mac_address = true;
-#endif
-    e2e_send_event_test_x509(MQTT_WebSocket_Protocol);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_Modules_SendEvent_e2e_x509_urlEncode)
-{
-#ifdef AZIOT_LINUX
-    g_e2e_test_options.set_mac_address = true;
-#endif
-    g_e2e_test_options.use_special_chars = true;
-    e2e_send_event_test_x509(MQTT_WebSocket_Protocol);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_Modules_RecvMessage_E2ETest_x509)
-{
-#ifdef AZIOT_LINUX
-        g_e2e_test_options.set_mac_address = false;
-#endif
-    e2e_recv_message_test_x509(MQTT_WebSocket_Protocol);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_Modules_RecvMessage_E2ETest_x509_urlDecode)
-{
-#ifdef AZIOT_LINUX
-    g_e2e_test_options.set_mac_address = false;
-#endif
-    g_e2e_test_options.use_special_chars = true;
-    e2e_recv_message_test_x509(MQTT_WebSocket_Protocol);
-}
-#endif
 END_TEST_SUITE(iothubclient_mqtt_modules_ws_e2e)

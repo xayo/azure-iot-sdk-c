@@ -35,18 +35,6 @@ TEST_FUNCTION(IoTHub_MQTT_Modules_GetFullDesired_e2e_sas)
     dt_e2e_get_complete_desired_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
 }
 
-#ifndef __APPLE__
-TEST_FUNCTION(IoTHub_MQTT_Modules_SendReported_e2e_x509)
-{
-    dt_e2e_send_reported_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_X509);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_Modules_GetFullDesired_e2e_x509)
-{
-    dt_e2e_get_complete_desired_test(MQTT_Protocol, IOTHUB_ACCOUNT_AUTH_X509);
-}
-#endif
-
 //
 // MQTT_WS tests.
 //
@@ -59,18 +47,6 @@ TEST_FUNCTION(IoTHub_MQTT_Modules_WS_GetFullDesired_e2e_sas)
 {
     dt_e2e_get_complete_desired_test(MQTT_WebSocket_Protocol, IOTHUB_ACCOUNT_AUTH_CONNSTRING);
 }
-
-#ifndef __APPLE__
-TEST_FUNCTION(IoTHub_MQTT_Modules_WS_GetFullDesired_e2e_x509)
-{
-    dt_e2e_get_complete_desired_test(MQTT_WebSocket_Protocol, IOTHUB_ACCOUNT_AUTH_X509);
-}
-
-TEST_FUNCTION(IoTHub_MQTT_Modules_WS_SendReported_e2e_x509)
-{
-    dt_e2e_send_reported_test(MQTT_WebSocket_Protocol, IOTHUB_ACCOUNT_AUTH_X509);
-}
-#endif
 
 END_TEST_SUITE(iothubclient_mqtt_modules_dt_e2e)
 

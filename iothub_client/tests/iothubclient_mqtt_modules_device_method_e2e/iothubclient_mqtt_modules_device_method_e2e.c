@@ -62,60 +62,12 @@ BEGIN_TEST_SUITE(iothubclient_mqtt_modules_device_method_e2e)
         device_method_e2e_method_call_with_embedded_single_quote_sas(MQTT_Protocol);
     }
 
-
 #ifndef DONT_USE_UPLOADTOBLOB
     TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_UploadBlob_sas)
     {
         device_method_e2e_method_calls_upload_sas(MQTT_Protocol);
     }
-
-#ifndef __APPLE__
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_UploadBlob_x509)
-    {
-        device_method_e2e_method_calls_upload_x509(MQTT_Protocol);
-    }
-#endif // __APPLE__
 #endif // DONT_USE_UPLOADTOBLOB
-
-#ifndef __APPLE__
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_String_x509)
-    {
-        device_method_e2e_method_call_with_string_x509(MQTT_Protocol);
-    }
-
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_Double_Quoted_Json_x509)
-    {
-        device_method_e2e_method_call_with_double_quoted_json_x509(MQTT_Protocol);
-    }
-
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_Empty_Json_Object_x509)
-    {
-        device_method_e2e_method_call_with_empty_json_object_x509(MQTT_Protocol);
-    }
-
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_Null_x509)
-    {
-        device_method_e2e_method_call_with_null_x509(MQTT_Protocol);
-    }
-
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_Embedded_Double_Quote_x509)
-    {
-        device_method_e2e_method_call_with_embedded_double_quote_x509(MQTT_Protocol);
-    }
-
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Method_Call_With_Embedded_Single_Quote_x509)
-    {
-        device_method_e2e_method_call_with_embedded_single_quote_x509(MQTT_Protocol);
-    }
-
-    //
-    // MQTT_WS tests.  Only test small subset.
-    //
-    TEST_FUNCTION(IotHub_Mqtt_Modules_Ws_Method_Call_With_String_x509)
-    {
-        device_method_e2e_method_call_with_string_x509(MQTT_WebSocket_Protocol);
-    }
-#endif // __APPLE__
 
     TEST_FUNCTION(IotHub_Mqtt_Modules_Ws_Method_Call_With_String_sas)
     {
