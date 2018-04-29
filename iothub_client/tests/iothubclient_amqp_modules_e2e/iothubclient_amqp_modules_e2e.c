@@ -21,12 +21,12 @@ BEGIN_TEST_SUITE(iothubclient_amqp_modules_e2e)
         TEST_DEINITIALIZE_MEMORY_DEBUG(g_dllByDll);
     }
 
-    TEST_FUNCTION(IoTHub_AMQP_modules_SendEvent_e2e_sas)
+    TEST_FUNCTION(IotHub_AMQP_Modules_modules_SendEvent_e2e_sas)
     {
         e2e_send_event_test_sas(AMQP_Protocol);
     }
 
-    TEST_FUNCTION(IoTHub_AMQP_modules_RecvMessage_E2ETest_sas)
+    TEST_FUNCTION(IotHub_AMQP_Modules_modules_RecvMessage_E2ETest_sas)
     {
         e2e_recv_message_test_sas(AMQP_Protocol);
     }
