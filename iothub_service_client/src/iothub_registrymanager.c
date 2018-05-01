@@ -1387,7 +1387,7 @@ IOTHUB_REGISTRYMANAGER_HANDLE IoTHubRegistryManager_Create(IOTHUB_SERVICE_CLIENT
         /*Codes_SRS_IOTHUBREGISTRYMANAGER_12_084: [ If any member of the serviceClientHandle input parameter is NULL IoTHubRegistryManager_Create shall return NULL ] */
         IOTHUB_SERVICE_CLIENT_AUTH* serviceClientAuth = (IOTHUB_SERVICE_CLIENT_AUTH*)serviceClientHandle;
 
-        if ((serviceClientAuth->auth_type != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB) && (serviceClientAuth->auth_type != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE))
+        if ((serviceClientAuth->authType != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB) && (serviceClientAuth->authType != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE))
         {
             LogError("authInfo must be of type %s or %s ONLY", IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB, IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE);
             result = NULL;

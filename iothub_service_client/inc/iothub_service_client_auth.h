@@ -53,7 +53,7 @@ extern "C"
 */
 typedef struct IOTHUB_SERVICE_CLIENT_AUTH_TAG
 {
-    IOTHUB_SERVICE_CLIENT_AUTH_TYPE auth_type;
+    IOTHUB_SERVICE_CLIENT_AUTH_TYPE authType;
     char* hostname;
     char* iothubName;
     char* iothubSuffix;

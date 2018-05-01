@@ -33,23 +33,23 @@ static void free_service_client_auth(IOTHUB_SERVICE_CLIENT_AUTH* authInfo)
 DEFINE_ENUM_STRINGS(IOTHUB_DEVICE_STATUS, IOTHUB_DEVICE_STATUS_VALUES);
 DEFINE_ENUM_STRINGS(IOTHUB_DEVICE_CONNECTION_STATE, IOTHUB_DEVICE_CONNECTION_STATE_VALUES);
 
-static int validate_and_choose_auth_type(const char* keyName, const char* deviceId, const char* moduleId, IOTHUB_SERVICE_CLIENT_AUTH_TYPE* auth_type)
+static int validate_and_choose_authType(const char* keyName, const char* deviceId, const char* moduleId, IOTHUB_SERVICE_CLIENT_AUTH_TYPE* authType)
 {
     int result;
 
     if ((keyName != NULL) && (deviceId == NULL) && (moduleId == NULL))
     {
-        *auth_type = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB;
+        *authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB;
         result = 0;
     }
     else if ((keyName == NULL) && (deviceId != NULL) && (moduleId == NULL))
     {
-        *auth_type = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE;
+        *authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE;
         result = 0;
     }
     else if ((keyName == NULL) && (deviceId != NULL) && (moduleId != NULL))
     {
-        *auth_type = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE;
+        *authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE;
         result = 0;
     }
     else
@@ -124,7 +124,7 @@ IOTHUB_SERVICE_CLIENT_AUTH_HANDLE IoTHubServiceClientAuth_CreateFromConnectionSt
                     /*Codes_SRS_IOTHUBSERVICECLIENT_12_004: [** IoTHubServiceClientAuth_CreateFromConnectionString shall populate hostName, iotHubName, iotHubSuffix, sharedAccessKeyName, sharedAccessKeyValue from the given connection string by calling connectionstringparser_parse **] */
                     (void)memset(result, 0, sizeof(IOTHUB_SERVICE_CLIENT_AUTH));
 
-                    if (validate_and_choose_auth_type(keyName, deviceId, moduleId, &result->auth_type) != 0)
+                    if (validate_and_choose_authType(keyName, deviceId, moduleId, &result->authType) != 0)
                     {
                         LogError("Inavlid combination of value(s) for %s, %s or %s", IOTHUBSHAREDACESSKEYNAME, IOTHUBDEVICEID, IOTHUBMODULEID);
                         free_service_client_auth(result);
