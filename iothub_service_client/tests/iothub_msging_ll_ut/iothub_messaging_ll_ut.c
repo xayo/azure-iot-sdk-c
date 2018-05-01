@@ -710,11 +710,14 @@ BEGIN_TEST_SUITE(iothub_messaging_ll_ut)
 
         umock_c_reset_all_calls();
 
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.hostname = TEST_HOSTNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubName = TEST_IOTHUBNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubSuffix = TEST_IOTHUBSUFFIX;
-        TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = TEST_SHAREDACCESSKEY;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.deviceId = NULL;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.moduleId = NULL;
 
         TEST_IOTHUB_MESSAGING_DATA.hostname = TEST_HOSTNAME;
         TEST_IOTHUB_MESSAGING_DATA.iothubName = TEST_IOTHUBNAME;
@@ -811,6 +814,36 @@ BEGIN_TEST_SUITE(iothub_messaging_ll_ut)
     TEST_FUNCTION(IoTHubMessaging_LL_Create_return_null_if_input_parameter_serviceClientHandle_sharedAccessKey_is_NULL)
     {
         //// arrange
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
+
+        // act
+        IOTHUB_MESSAGING_HANDLE result = IoTHubMessaging_LL_Create(TEST_IOTHUB_SERVICE_CLIENT_AUTH_HANDLE);
+
+        // assert
+        ASSERT_IS_NULL(result);
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    TEST_FUNCTION(IoTHubMessaging_LL_Create_return_null_if_auth_type_device)
+    {
+        //arrange
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.deviceId = "theDeviceId";
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
+
+        // act
+        IOTHUB_MESSAGING_HANDLE result = IoTHubMessaging_LL_Create(TEST_IOTHUB_SERVICE_CLIENT_AUTH_HANDLE);
+
+        // assert
+        ASSERT_IS_NULL(result);
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    }
+
+    TEST_FUNCTION(IoTHubMessaging_LL_Create_return_null_if_auth_type_module)
+    {
+        //arrange
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.moduleId = "theModuleId";
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
 
         // act

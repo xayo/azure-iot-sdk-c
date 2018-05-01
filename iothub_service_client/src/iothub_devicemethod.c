@@ -372,7 +372,12 @@ IOTHUB_SERVICE_CLIENT_DEVICE_METHOD_HANDLE IoTHubDeviceMethod_Create(IOTHUB_SERV
         /*Codes_SRS_IOTHUBDEVICEMETHOD_12_002: [ If any member of the serviceClientHandle input parameter is NULL IoTHubDeviceMethod_Create shall return NULL ]*/
         IOTHUB_SERVICE_CLIENT_AUTH* serviceClientAuth = (IOTHUB_SERVICE_CLIENT_AUTH*)serviceClientHandle;
 
-        if (serviceClientAuth->hostname == NULL)
+        if (serviceClientAuth->authType != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB)
+        {
+            LogError("authInfo->authType must be IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB");
+            result = NULL;
+        }
+        else if (serviceClientAuth->hostname == NULL)
         {
             LogError("authInfo->hostName input parameter cannot be NULL");
             result = NULL;

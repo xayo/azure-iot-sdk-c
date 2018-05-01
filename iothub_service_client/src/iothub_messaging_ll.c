@@ -842,7 +842,12 @@ IOTHUB_MESSAGING_HANDLE IoTHubMessaging_LL_Create(IOTHUB_SERVICE_CLIENT_AUTH_HAN
         /*Codes_SRS_IOTHUBMESSAGING_12_064: [ If any member of the serviceClientHandle input parameter is NULL IoTHubMessaging_LL_Create shall return NULL ] */
         IOTHUB_SERVICE_CLIENT_AUTH* serviceClientAuth = (IOTHUB_SERVICE_CLIENT_AUTH*)serviceClientHandle;
 
-        if (serviceClientAuth->hostname == NULL)
+        if (serviceClientAuth->authType != IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB)
+        {
+            LogError("authInfo->authType input parameter must be IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB");
+            result = NULL;
+        }
+        else if (serviceClientAuth->hostname == NULL)
         {
             LogError("authInfo->hostName input parameter cannot be NULL");
             result = NULL;
