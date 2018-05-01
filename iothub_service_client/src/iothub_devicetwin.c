@@ -322,7 +322,12 @@ IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE IoTHubDeviceTwin_Create(IOTHUB_SERVICE_
         /*Codes_SRS_IOTHUBDEVICETWIN_12_002: [ If any member of the serviceClientHandle input parameter is NULL IoTHubDeviceTwin_Create shall return NULL ]*/
         IOTHUB_SERVICE_CLIENT_AUTH* serviceClientAuth = (IOTHUB_SERVICE_CLIENT_AUTH*)serviceClientHandle;
 
-        if (serviceClientAuth->hostname == NULL)
+        if ((serviceClientAuth->authType == IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE) || (serviceClientAuth->authType == IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE))
+        {
+            LogError("authInfo->authType must be IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB");
+            result = NULL;
+        }
+        else if (serviceClientAuth->hostname == NULL)
         {
             LogError("authInfo->hostName input parameter cannot be NULL");
             result = NULL;

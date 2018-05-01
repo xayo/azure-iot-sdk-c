@@ -301,11 +301,14 @@ TEST_FUNCTION_INITIALIZE(TestMethodInitialize)
 
     umock_c_reset_all_calls();
 
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB;
     TEST_IOTHUB_SERVICE_CLIENT_AUTH.hostname = TEST_HOSTNAME;
     TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubName = TEST_IOTHUBNAME;
     TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubSuffix = TEST_IOTHUBSUFFIX;
-    TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
     TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = TEST_SHAREDACCESSKEY;
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.deviceId = NULL;
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.moduleId = NULL;
 
 }
 
@@ -388,6 +391,36 @@ TEST_FUNCTION(IoTHubDeviceTwin_Create_return_null_if_input_parameter_serviceClie
 TEST_FUNCTION(IoTHubDeviceTwin_Create_return_null_if_input_parameter_serviceClientHandle_sharedAccessKey_is_NULL)
 {
     // arrange
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
+
+    // act
+    IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE result = IoTHubDeviceTwin_Create(TEST_IOTHUB_SERVICE_CLIENT_AUTH_HANDLE);
+
+    // assert
+    ASSERT_IS_NULL(result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+}
+
+TEST_FUNCTION(IoTHubDeviceTwin_Create_return_null_if_auth_type_device)
+{
+    //arrange
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE;
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.deviceId = "theDeviceId";
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
+
+    // act
+    IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE result = IoTHubDeviceTwin_Create(TEST_IOTHUB_SERVICE_CLIENT_AUTH_HANDLE);
+
+    // assert
+    ASSERT_IS_NULL(result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+}
+
+TEST_FUNCTION(IoTHubDeviceTwin_Create_return_null_if_auth_type_module)
+{
+    //arrange
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE;
+    TEST_IOTHUB_SERVICE_CLIENT_AUTH.moduleId = "theModuleId";
     TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = NULL;
 
     // act
@@ -1032,7 +1065,6 @@ TEST_FUNCTION(IoTHubDeviceTwin_UpdateModuleTwin_return_NULL_if_input_parameter_d
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 }
 
-
 TEST_FUNCTION(IoTHubDeviceTwin_UpdateModuleTwin_happy_path_status_code_200)
 {
     // arrange
@@ -1045,7 +1077,8 @@ TEST_FUNCTION(IoTHubDeviceTwin_UpdateModuleTwin_happy_path_status_code_200)
     set_expected_calls_for_UpdateDeviceOrModuleTwin_processing();
 
     // act
-    const char* deviceId = " ";
+    const char* deviceId = " ";
+
     const char* moduleId = " ";
     const char* deviceTwinJson = " ";
     char* result = IoTHubDeviceTwin_UpdateModuleTwin(TEST_IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE, deviceId, moduleId, deviceTwinJson);
