@@ -956,11 +956,14 @@ BEGIN_TEST_SUITE(iothub_registrymanager_ut)
 
         umock_c_reset_all_calls();
 
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.authType = IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.hostname = TEST_HOSTNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubName = TEST_IOTHUBNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.iothubSuffix = TEST_IOTHUBSUFFIX;
-        TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
         TEST_IOTHUB_SERVICE_CLIENT_AUTH.sharedAccessKey = TEST_SHAREDACCESSKEY;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.keyName = TEST_SHAREDACCESSKEYNAME;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.deviceId = NULL;
+        TEST_IOTHUB_SERVICE_CLIENT_AUTH.moduleId = NULL;
 
         TEST_IOTHUB_REGISTRYMANAGER.hostname = TEST_HOSTNAME;
         TEST_IOTHUB_REGISTRYMANAGER.iothubName = TEST_IOTHUBNAME;
@@ -1154,12 +1157,7 @@ BEGIN_TEST_SUITE(iothub_registrymanager_ut)
         ///cleanup
         if (result != NULL)
         {
-            free(result->hostname);
-            free(result->iothubName);
-            free(result->iothubSuffix);
-            free(result->keyName);
-            free(result->sharedAccessKey);
-            free(result);
+            IoTHubRegistryManager_Destroy(result);
             result = NULL;
         }
     }

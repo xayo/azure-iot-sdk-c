@@ -1464,14 +1464,14 @@ IOTHUB_REGISTRYMANAGER_HANDLE IoTHubRegistryManager_Create(IOTHUB_SERVICE_CLIENT
                     result = NULL;
                 }
                 /*Codes_SRS_IOTHUBREGISTRYMANAGER_12_093: [ IoTHubRegistryManager_Create shall allocate memory and copy keyName to result->keyName by calling mallocAndStrcpy_s. ] */
-                else if ((serviceClientAuth->keyName != NULL) && (mallocAndStrcpy_s(&result->keyName, serviceClientAuth->keyName) != 0))
+                else if ((serviceClientAuth->authType == IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB) && (mallocAndStrcpy_s(&result->keyName, serviceClientAuth->keyName) != 0))
                 {
                     /*Codes_SRS_IOTHUBREGISTRYMANAGER_12_094: [ If the mallocAndStrcpy_s fails, IoTHubRegistryManager_Create shall do clean up and return NULL. ] */
                     LogError("mallocAndStrcpy_s failed for keyName");
                     free_registrymanager_handle(result);
                     result = NULL;
                 }
-                else if ((serviceClientAuth->deviceId != NULL) && (mallocAndStrcpy_s(&result->deviceId, serviceClientAuth->deviceId) != 0))
+                else if ((serviceClientAuth->authType == IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE) && (mallocAndStrcpy_s(&result->deviceId, serviceClientAuth->deviceId) != 0))
                 {
                     /*Codes_SRS_IOTHUBREGISTRYMANAGER_12_094: [ If the mallocAndStrcpy_s fails, IoTHubRegistryManager_Create shall do clean up and return NULL. ] */
                     LogError("mallocAndStrcpy_s failed for deviceId");

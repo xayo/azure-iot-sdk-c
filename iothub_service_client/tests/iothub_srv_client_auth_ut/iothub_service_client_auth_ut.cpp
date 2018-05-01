@@ -1325,6 +1325,24 @@ static void test_IoTHubServiceClientAuth_CreateFromConnectionString_impl(bool se
 
     // assert
     ASSERT_IS_NOT_NULL(result);
+
+    if (set_sharedaccesskeyname && !set_deviceid && !set_moduleid)
+    {
+        ASSERT_ARE_EQUAL(int, IOTHUB_SERVICE_CLIENT_AUTH_TYPE_HUB, result->authType);
+    }
+    else if (!set_sharedaccesskeyname && set_deviceid && !set_moduleid)
+    {
+        ASSERT_ARE_EQUAL(int, IOTHUB_SERVICE_CLIENT_AUTH_TYPE_DEVICE, result->authType);
+    }
+    else if (!set_sharedaccesskeyname && set_deviceid && set_moduleid)
+    {
+        ASSERT_ARE_EQUAL(int, IOTHUB_SERVICE_CLIENT_AUTH_TYPE_MODULE, result->authType);
+    }
+    else
+    {
+        ASSERT_IS_TRUE_WITH_MSG(false, "Invalid auth - IoTHubServiceClientAuth_CreateFromConnectionString should have returned NULL");
+    }
+
     if (result != NULL)
     {
         free(result);
