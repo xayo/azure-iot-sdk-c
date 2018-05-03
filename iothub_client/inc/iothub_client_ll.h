@@ -662,6 +662,9 @@ DEFINE_ENUM(IOTHUB_CLIENT_IOTHUB_METHOD_STATUS, IOTHUB_CLIENT_IOTHUB_METHOD_STAT
     MOCKABLE_FUNCTION(, IOTHUB_CLIENT_RESULT, IoTHubClient_LL_SetInputMessageCallback, IOTHUB_CLIENT_LL_HANDLE, iotHubClientHandle, const char*, inputName, IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC, eventHandlerCallback, void*, userContextCallback);
 
 
+IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol);
+
+
 #ifdef __cplusplus
 }
 #endif

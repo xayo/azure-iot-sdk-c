@@ -63,7 +63,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
                 result = NULL;
             }
         }
-        else
+        else if (iothub_security_type() == IOTHUB_SECURITY_TYPE_X509)
         {
             result->cred_type = AUTH_TYPE_X509;
             const HSM_CLIENT_X509_INTERFACE* x509_interface = hsm_client_x509_interface();
@@ -79,7 +79,16 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
                 result = NULL;
             }
         }
-
+#ifdef HSM_TYPE_HTTP_EDGE
+        else if (iothub_security_type() == IOTHUB_SECURITY_TYPE_HTTP_EDGE)
+        {
+            result->cred_type = AUTH_TYPE_SAS;
+            const HSM_CLIENT_HTTP_EDGE_INTERFACE* http_edge_interface = hsm_client_http_edge_interface();
+            result->hsm_client_create = http_edge_interface->hsm_client_http_edge_create;
+            result->hsm_client_destroy = http_edge_interface->hsm_client_http_edge_destroy;
+            result->hsm_client_sign_data = http_edge_interface->hsm_client_sign_with_identity;
+        }
+#endif
         if (result != NULL)
         {
             /* Codes_IOTHUB_DEV_AUTH_07_025: [ iothub_device_auth_create shall call the concrete_iothub_device_auth_create function associated with the interface_desc. ] */

@@ -12,6 +12,8 @@
 #include "azure_c_shared_utility/constbuffer.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/singlylinkedlist.h"
+#include "azure_c_shared_utility/env_variable.h"
+
 
 
 #include "iothub_client_authorization.h"
@@ -240,7 +242,7 @@ static IOTHUB_CLIENT_LL_HANDLE_DATA* initialize_iothub_client(const IOTHUB_CLIEN
             memset(result, 0, sizeof(IOTHUB_CLIENT_LL_HANDLE_DATA));
             if (use_dev_auth)
             {
-                if ((result->authorization_module = IoTHubClient_Auth_CreateFromDeviceAuth(client_config->deviceId)) == NULL)
+                if ((result->authorization_module = IoTHubClient_Auth_CreateFromDeviceAuth(client_config->deviceId, module_id)) == NULL)
                 {
                     LogError("Failed create authorization module");
                     free(result);
@@ -2539,4 +2541,22 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetInputMessageCallback(IOTHUB_CLIENT_LL_HA
 {
     return IoTHubClient_LL_SetInputMessageCallbackImpl(iotHubClientHandle, inputName, eventHandlerCallback, NULL, userContextCallback, NULL, 0);
 }
+
+
+IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
+{
+    // TODO: Check "IOTEDGE_AUTHSCHEME" is set to what we know, "SasToken"
+
+    IOTHUB_CLIENT_CONFIG c;
+    memset(&c, 0, sizeof(c));
+    c.protocol = protocol;
+    c.deviceId = environment_get_variable("IOTEDGE_DEVICEID");
+    // TODO: Need to split out the hubName / suffix here.
+    c.iotHubName =  c.iotHubSuffix = environment_get_variable("IOTEDGE_IOTHUBHOSTNAME");
+    c.protocolGatewayHostName = environment_get_variable("IOTEDGE_GATEWAYHOSTNAME");
+
+    return initialize_iothub_client(&c, NULL, true, environment_get_variable("IOTEDGE_MODULEID"));
+}
+
+
 
