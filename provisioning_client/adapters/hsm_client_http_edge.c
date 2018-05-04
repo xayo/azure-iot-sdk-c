@@ -11,6 +11,16 @@
 #include "azure_c_shared_utility/httpapi.h"
 #include "azure_c_shared_utility/env_variable.h"
 
+#include "parson.h"
+
+static const char* HTTP_HEADER_KEY_CONTENT_TYPE = "Content-Type";
+static const char* HTTP_HEADER_VAL_CONTENT_TYPE = "application/json; charset=utf-8";
+static const char* HSM_EDGE_SIGN_JSON_KEY_ID = "KeyId";
+static const char* HSM_EDGE_SIGN_JSON_ALGORITHM = "Algo";
+static const char* HSM_EDGE_SIGN_DEFAULT_ALGORITHM = "HMACSHA256";
+static const char* HSM_EDGE_SIGN_JSON_DATA = "Data";
+static const char* HSM_EDGE_SIGN_JSON_DIGEST = "digest";
+
 
 /*
 #include "azure_c_shared_utility/gballoc.h"
@@ -118,9 +128,99 @@ const HSM_CLIENT_HTTP_EDGE_INTERFACE* hsm_client_http_edge_interface()
     return &http_edge_interface;
 }
 
+static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, const char* module_id)
+{
+    JSON_Value* root_value = NULL;
+    JSON_Object* root_object = NULL;
+    BUFFER_HANDLE result = NULL;
+    const char* serialized_string = NULL;
+
+    if ((root_value = json_value_init_object()) == NULL)
+    {
+        LogError("json_value_init_object failed");
+        result = NULL;
+    }
+    else if ((root_object = json_value_get_object(root_value)) == NULL)
+    {
+        LogError("json_value_get_object failed");
+        result = NULL;
+    }
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_KEY_ID, module_id)) != JSONSuccess)
+    {
+        LogError("json_object_set_string failed for keyId");
+        result = NULL;
+    }
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_ALGORITHM, HSM_EDGE_SIGN_DEFAULT_ALGORITHM)) != JSONSuccess)
+    {
+        LogError("json_object_set_string failed for algorithm");
+        result = NULL;
+    }
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_DATA, data)) != JSONSuccess)
+    {
+        LogError("json_object_set_string failed for data");
+        result = NULL;
+    }
+    else if ((serialized_string = json_serialize_to_string(root_value)) == NULL)
+    {
+        LogError("json_serialize_to_string failed");
+        result = NULL;
+    }
+    else if ((result = BUFFER_create((const unsigned char*)serialized_string, strlen(serialized_string))) == NULL)
+    {
+        LogError("Buffer_Create failed");
+        result = NULL;
+    }
+
+    json_free_serialized_string(serialized_string);
+    json_object_clear(root_object);
+    return result;
+}
+
+static int parse_json_signing_response(BUFFER_HANDLE http_response, unsigned char** signed_value, size_t* signed_len)
+{
+    int result;
+    const char* http_response_str;
+    JSON_Value* root_value = NULL;
+    JSON_Object* root_object = NULL;
+    const char* digest;
+
+
+    if ((http_response_str = BUFFER_u_char(http_response)) == NULL)
+    {
+        LogError("BUFFER_u_char reading http_response");
+        result = __FAILURE__;
+    }
+    else if ((root_value = json_parse_string(http_response_str)) == NULL)
+    {
+        LogError("json_parse_string failed");
+        result = __FAILURE__;
+    }
+    else if ((root_object = json_value_get_object(root_value)) == NULL)
+    {
+        LogError("json_value_get_object failed");
+        result = __FAILURE__;
+    }
+    else if ((digest = json_object_dotget_string(root_object, HSM_EDGE_SIGN_JSON_DIGEST)) == NULL)
+    {
+        LogError("json_value_get_object failed to get %s", HSM_EDGE_SIGN_JSON_DIGEST);
+        result = __FAILURE__;
+    }
+    
+
+    
+
+}
+
 int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char* data, size_t data_len, unsigned char** signed_value, size_t* signed_len)
 {
     int result;
+    BUFFER_HANDLE json_to_send = NULL;
+    BUFFER_HANDLE http_response = NULL;
+    STRING_HANDLE uri_path = NULL;
+    HTTPAPIEX_HANDLE httpapi_ex_handle = NULL;
+    HTTP_HEADERS_HANDLE http_headers_handle = NULL;
+    unsigned int* http_status;
+    
     if (handle == NULL || data == NULL || data_len == 0 || signed_value == NULL || signed_len == NULL)
     {
         LogError("Invalid handle value specified handle: %p, data: %p, data_len: %zu, signed_value: %p, signed_len: %p", handle, data, data_len, signed_value, signed_len);
@@ -129,9 +229,35 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     else
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_info = (HSM_CLIENT_HTTP_EDGE*)handle;
+
+        json_to_send = construct_json_signing_blob(data, NULL);
+            
+        httpapi_ex_handle = HTTPAPIEX_Create(hostname);
+
+        http_headers_handle = HTTPHeaders_Alloc();
+
+        HTTPHeaders_AddHeaderNameValuePair(http_headers_handle, HTTP_HEADER_KEY_CONTENT_TYPE, HTTP_HEADER_VAL_CONTENT_TYPE);
+        
+        uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, moduleId, hsm_client_info->api_version);
+
+        HTTPAPIEX_ExecuteRequest(httpapi_ex_handle, HTTPAPI_REQUEST_POST, uri_path, NULL,
+                                 json_to_send, &http_status, NULL, &http_response);
+
+        if (http_status >= 300)
+        {
+            ;
+        }
+
         (void)hsm_client_info;
         result = 0;
     }
+
+    STRING_delete(uri);
+    BUFFER_delete(json_to_send);
+    HTTPAPIEX_Destroy(httpapi_ex_handle);
+    HTTPHeaders_Free(http_headers_handle);
+    BUFFER_delete(http_response);
+    
     return result;
 }
 
