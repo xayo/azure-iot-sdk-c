@@ -88,6 +88,8 @@ if (${hsm_type_edge_module})
         ./adapters/hsm_client_http_edge.h)
     set(HSM_CLIENT_C_FILES ${HSM_CLIENT_C_FILES} 
         ./adapters/hsm_client_http_edge.c)
+        
+    set(HSM_CLIENT_LIBRARY ${HSM_CLIENT_LIBRARY} uhttp)
 endif()
 
 

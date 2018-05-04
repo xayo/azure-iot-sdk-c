@@ -6,9 +6,13 @@
 #include "azure_c_shared_utility/umock_c_prod.h"
 #include "azure_c_shared_utility/urlencode.h"
 #include "azure_c_shared_utility/strings.h"
+#include "azure_c_shared_utility/buffer_.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
-#include "azure_c_shared_utility/httpapiex.h"
+#include "azure_c_shared_utility/socketio.h"
+// #include "azure_c_shared_utility/httpapiex.h"
+#include "azure_uhttp_c/uhttp.h"
+
 #include "azure_c_shared_utility/env_variable.h"
 
 #include "parson.h"
@@ -176,54 +180,171 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
     return result;
 }
 
+typedef struct HSM_HTTP_EDGE_SIGNING_CONTEXT_TAG
+{
+    bool continue_running;
+    BUFFER_HANDLE http_response;
+} HSM_HTTP_EDGE_SIGNING_CONTEXT;
+
+static void on_edge_hsm_http_error(void* callback_ctx, HTTP_CALLBACK_REASON error_result)
+{
+    HSM_HTTP_EDGE_SIGNING_CONTEXT* sign_context = (HSM_HTTP_EDGE_SIGNING_CONTEXT*)callback_ctx;
+    if (sign_context == NULL)
+    {
+        LogError("on_edge_hsm_http_error invoked with invalid context.  reason=%d", error_result);
+    }
+    else
+    {
+        LogError("on_edge_hsm_http_error invoked.  reason=%d", error_result);
+        sign_context->continue_running = false;
+    }
+}
+
+static void on_edge_hsm_http_recv(void* callback_ctx, HTTP_CALLBACK_REASON request_result, const unsigned char* content, size_t content_length, unsigned int status_code, HTTP_HEADERS_HANDLE response_headers)
+{
+    (void)response_headers;
+    HSM_HTTP_EDGE_SIGNING_CONTEXT* sign_context = (HSM_HTTP_EDGE_SIGNING_CONTEXT*)callback_ctx;
+    if (sign_context == NULL)
+    {
+        LogError("on_edge_hsm_http_recv invoked with invalid context");
+    }
+    else
+    {
+        if (request_result != HTTP_CALLBACK_REASON_OK)
+        {
+            LogError("on_edge_hsm_http_recv request result = %d", request_result);
+        }
+        else if (status_code >= 300)
+        {
+            LogError("executing HTTP request fails, status=%d, response_buffer=%s", status_code, content ? (const char*)content : "unspecified");
+        }
+        else if (content == NULL)
+        {
+            LogError("executing HTTP request fails, content not set");
+        }
+        else if ((sign_context->http_response = BUFFER_create(content, content_length)) == NULL)
+        {
+            LogError("failed copying response buffer");
+        }
+        else
+        {
+            ; // success
+        }
+   
+        sign_context->continue_running = false;
+    }
+}
+
+static void on_edge_hsm_http_connected(void* callback_ctx, HTTP_CALLBACK_REASON connect_result)
+{
+    if (connect_result != HTTP_CALLBACK_REASON_OK)
+    {
+        HSM_HTTP_EDGE_SIGNING_CONTEXT* sign_context = (HSM_HTTP_EDGE_SIGNING_CONTEXT*)callback_ctx;
+        if (callback_ctx == NULL)
+        {
+            LogError("on_http_connected reports error %d but no context", connect_result);
+        }
+        else
+        {
+            LogError("on_http_connected reports error %d", connect_result);
+            sign_context->continue_running = false;
+        }
+    }
+}
+
+static const int HSM_HTTP_EDGE_MAXIMUM_REQUEST_TIME = 60; // 1 Minute
+
+static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HTTP_HEADERS_HANDLE http_headers_handle, const char* uri_path, BUFFER_HANDLE json_to_send, HSM_HTTP_EDGE_SIGNING_CONTEXT* sign_context)
+{
+    const unsigned char* json_to_send_str = BUFFER_u_char(json_to_send);
+    time_t start_request_time = get_time(NULL);
+    bool timed_out = false;
+
+    if (uhttp_client_execute_request(http_handle, HTTP_CLIENT_REQUEST_POST, uri_path, http_headers_handle, json_to_send_str, strlen((const char*)json_to_send_str), on_edge_hsm_http_recv, sign_context) != HTTP_CLIENT_OK)
+    {
+        (void)printf("FAILED FURTHER HERE\r\n");
+    }
+    else
+    {
+        do
+        {
+            uhttp_client_dowork(http_handle);
+            timed_out = difftime(start_request_time, get_time(NULL)) > HSM_HTTP_EDGE_MAXIMUM_REQUEST_TIME;
+        } while ((sign_context->continue_running == true) && (timed_out == false));
+    }
+
+    return (sign_context->http_response != NULL);
+}
 
 static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_info, BUFFER_HANDLE json_to_send)
 {
-    BUFFER_HANDLE http_response;
+    int result;
     STRING_HANDLE uri_path = NULL;
-    HTTPAPIEX_HANDLE httpapi_ex_handle = NULL;
+    HTTP_CLIENT_HANDLE http_handle = NULL;
     HTTP_HEADERS_HANDLE http_headers_handle = NULL;
-    unsigned int http_status;
-    HTTP_HEADERS_RESULT http_headers_result;
-    HTTPAPIEX_RESULT httpapiex_result;
 
-    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, moduleId, hsm_client_info->api_version)) == NULL)
+    HTTP_CLIENT_RESULT http_open_result;
+    HTTP_HEADERS_RESULT http_headers_result;
+
+    SOCKETIO_CONFIG config;
+    config.accepted_socket = false;
+    config.hostname = "www.bing.com";
+    config.port = 80;
+
+    HSM_HTTP_EDGE_SIGNING_CONTEXT sign_context;
+    sign_context.continue_running = true;
+    sign_context.http_response = NULL;
+
+    const char* host_name = "www.bing.com";
+    int port_num = 80;
+
+    // TODO - "" below should be module_id
+    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, "TODO-module-id", hsm_client_info->api_version)) == NULL)
     {
         LogError("STRING_construct_sprintffailed");
-        http_response = NULL;
-    }        
-    else if ((httpapi_ex_handle = HTTPAPIEX_Create(hostname)) == NULL)
+        result = __FAILURE__;
+    }
+    else if ((http_handle = uhttp_client_create(socketio_get_interface_description(), &config, on_edge_hsm_http_error, &sign_context)) == NULL)
     {
-        LogError("HTTPAPIEX_Create failed");
-        http_response = NULL;
+        LogError("uhttp_client_create failed");
+        result = __FAILURE__;
+    }
+    else if ((http_open_result = uhttp_client_open(http_handle, host_name, port_num, on_edge_hsm_http_connected, &sign_context) != HTTP_CLIENT_OK) != HTTP_CLIENT_OK)
+    {
+        LogError("uhttp_client_open failed, err=%d", http_open_result);
+        result = __FAILURE__;
     }
     else if ((http_headers_handle = HTTPHeaders_Alloc()) == NULL)
     {
         LogError("HTTPAPIEX_Create failed");
-        http_response = NULL;
+        result = __FAILURE__;
     }
     else if ((http_headers_result = HTTPHeaders_AddHeaderNameValuePair(http_headers_handle, HTTP_HEADER_KEY_CONTENT_TYPE, HTTP_HEADER_VAL_CONTENT_TYPE)) != HTTP_HEADERS_OK)
     {
         LogError("HTTPHeaders_AddHeaderNameValuePair failed, error=%d", http_headers_result);
-        http_response = NULL;
+        result = __FAILURE__;
     }
-    else if ((httpapiex_result = HTTPAPIEX_ExecuteRequest(httpapi_ex_handle, HTTPAPI_REQUEST_POST, STRING_c_str(uri_path), NULL,
-                                                           json_to_send, &http_status, NULL, http_response)) != HTTPAPIEX_OK)
+    else if (send_and_poll_http_signing_request(http_handle, http_headers_handle, STRING_c_str(uri_path), json_to_send, &sign_context) != 0)
     {
-        LogError("HTTPAPIEX_ExecuteRequest failed, error=%d", httpapiex_result);
-        http_response = NULL;        
+        LogError("send_and_poll_http_signing_request failed");
+        result = __FAILURE__;
     }
-    else if (http_status >= 300)
+    else
     {
-        LogError("executing HTTP request fails, http_status=%d, response_buffer=%s", http_status, (const char*)BUFFER_u_char(http_response));
-        BUFFER_delete(http_response);
-        http_response = NULL;        
+        result = 0;
     }
 
-    HTTPAPIEX_Destroy(httpapi_ex_handle);
     HTTPHeaders_Free(http_headers_handle);
+    uhttp_client_destroy(http_handle);
     STRING_delete(uri_path);
-    return http_response;
+
+    if (result != 0)
+    {
+        BUFFER_delete(sign_context.http_response);
+        sign_context.http_response = NULL;
+    }
+
+    return sign_context.http_response;
 }
 
 
@@ -285,7 +406,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_info = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        if ((json_to_send = construct_json_signing_blob(data, NULL)) == NULL)
+        if ((json_to_send = construct_json_signing_blob(data, "TODO-module-id")) == NULL)
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;

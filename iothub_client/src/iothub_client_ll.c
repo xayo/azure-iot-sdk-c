@@ -2542,20 +2542,38 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetInputMessageCallback(IOTHUB_CLIENT_LL_HA
     return IoTHubClient_LL_SetInputMessageCallbackImpl(iotHubClientHandle, inputName, eventHandlerCallback, NULL, userContextCallback, NULL, 0);
 }
 
+static const char* ENVIRONMENT_VAR_AUTHSCHEME = "IOTEDGE_AUTHSCHEME";
+static const char* SAS_TOKEN_AUTH = "SasToken";
 
 IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
-    // TODO: Check "IOTEDGE_AUTHSCHEME" is set to what we know, "SasToken"
+    IOTHUB_CLIENT_LL_HANDLE result;
+    
+    const char* auth_scheme;
+    if ((auth_scheme = environment_get_variable(ENVIRONMENT_VAR_AUTHSCHEME)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_AUTHSCHEME);
+        result = NULL;
+    }
+    else if (strcmp(auth_scheme,SAS_TOKEN_AUTH) != 0)
+    {
+        LogError("Environment %s was set to %s, but only support for %s", ENVIRONMENT_VAR_AUTHSCHEME, auth_scheme, SAS_TOKEN_AUTH);
+        result = NULL;
+    }
+    else
+    {
+        IOTHUB_CLIENT_CONFIG c;
+        memset(&c, 0, sizeof(c));
+        c.protocol = protocol;
+        c.deviceId = environment_get_variable("IOTEDGE_DEVICEID");
+        // TODO: Need to split out the hubName / suffix here.
+        c.iotHubName =  c.iotHubSuffix = environment_get_variable("IOTEDGE_IOTHUBHOSTNAME");
+        c.protocolGatewayHostName = environment_get_variable("IOTEDGE_GATEWAYHOSTNAME");
 
-    IOTHUB_CLIENT_CONFIG c;
-    memset(&c, 0, sizeof(c));
-    c.protocol = protocol;
-    c.deviceId = environment_get_variable("IOTEDGE_DEVICEID");
-    // TODO: Need to split out the hubName / suffix here.
-    c.iotHubName =  c.iotHubSuffix = environment_get_variable("IOTEDGE_IOTHUBHOSTNAME");
-    c.protocolGatewayHostName = environment_get_variable("IOTEDGE_GATEWAYHOSTNAME");
+        result = initialize_iothub_client(&c, NULL, true, environment_get_variable("IOTEDGE_MODULEID"));
+    }
 
-    return initialize_iothub_client(&c, NULL, true, environment_get_variable("IOTEDGE_MODULEID"));
+    return result;
 }
 
 
