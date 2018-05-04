@@ -8,7 +8,7 @@
 #include "azure_c_shared_utility/strings.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
-#include "azure_c_shared_utility/httpapi.h"
+#include "azure_c_shared_utility/httpapiex.h"
 #include "azure_c_shared_utility/env_variable.h"
 
 #include "parson.h"
@@ -133,7 +133,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
     JSON_Value* root_value = NULL;
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
-    const char* serialized_string = NULL;
+    char* serialized_string = NULL;
 
     if ((root_value = json_value_init_object()) == NULL)
     {
@@ -155,7 +155,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
         LogError("json_object_set_string failed for algorithm");
         result = NULL;
     }
-    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_DATA, data)) != JSONSuccess)
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_DATA, (const char*)data)) != JSONSuccess)
     {
         LogError("json_object_set_string failed for data");
         result = NULL;
@@ -176,6 +176,57 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
     return result;
 }
 
+
+static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_info, BUFFER_HANDLE json_to_send)
+{
+    BUFFER_HANDLE http_response;
+    STRING_HANDLE uri_path = NULL;
+    HTTPAPIEX_HANDLE httpapi_ex_handle = NULL;
+    HTTP_HEADERS_HANDLE http_headers_handle = NULL;
+    unsigned int http_status;
+    HTTP_HEADERS_RESULT http_headers_result;
+    HTTPAPIEX_RESULT httpapiex_result;
+
+    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, moduleId, hsm_client_info->api_version)) == NULL)
+    {
+        LogError("STRING_construct_sprintffailed");
+        http_response = NULL;
+    }        
+    else if ((httpapi_ex_handle = HTTPAPIEX_Create(hostname)) == NULL)
+    {
+        LogError("HTTPAPIEX_Create failed");
+        http_response = NULL;
+    }
+    else if ((http_headers_handle = HTTPHeaders_Alloc()) == NULL)
+    {
+        LogError("HTTPAPIEX_Create failed");
+        http_response = NULL;
+    }
+    else if ((http_headers_result = HTTPHeaders_AddHeaderNameValuePair(http_headers_handle, HTTP_HEADER_KEY_CONTENT_TYPE, HTTP_HEADER_VAL_CONTENT_TYPE)) != HTTP_HEADERS_OK)
+    {
+        LogError("HTTPHeaders_AddHeaderNameValuePair failed, error=%d", http_headers_result);
+        http_response = NULL;
+    }
+    else if ((httpapiex_result = HTTPAPIEX_ExecuteRequest(httpapi_ex_handle, HTTPAPI_REQUEST_POST, STRING_c_str(uri_path), NULL,
+                                                           json_to_send, &http_status, NULL, http_response)) != HTTPAPIEX_OK)
+    {
+        LogError("HTTPAPIEX_ExecuteRequest failed, error=%d", httpapiex_result);
+        http_response = NULL;        
+    }
+    else if (http_status >= 300)
+    {
+        LogError("executing HTTP request fails, http_status=%d, response_buffer=%s", http_status, (const char*)BUFFER_u_char(http_response));
+        BUFFER_delete(http_response);
+        http_response = NULL;        
+    }
+
+    HTTPAPIEX_Destroy(httpapi_ex_handle);
+    HTTPHeaders_Free(http_headers_handle);
+    STRING_delete(uri_path);
+    return http_response;
+}
+
+
 static int parse_json_signing_response(BUFFER_HANDLE http_response, unsigned char** signed_value, size_t* signed_len)
 {
     int result;
@@ -184,8 +235,7 @@ static int parse_json_signing_response(BUFFER_HANDLE http_response, unsigned cha
     JSON_Object* root_object = NULL;
     const char* digest;
 
-
-    if ((http_response_str = BUFFER_u_char(http_response)) == NULL)
+    if ((http_response_str = (const char*)BUFFER_u_char(http_response)) == NULL)
     {
         LogError("BUFFER_u_char reading http_response");
         result = __FAILURE__;
@@ -205,10 +255,19 @@ static int parse_json_signing_response(BUFFER_HANDLE http_response, unsigned cha
         LogError("json_value_get_object failed to get %s", HSM_EDGE_SIGN_JSON_DIGEST);
         result = __FAILURE__;
     }
-    
+    else if (mallocAndStrcpy_s((char**)signed_value, digest) != 0)
+    {
+        LogError("Allocating signed_value failed");
+        result = __FAILURE__;
+    }
+    else
+    {     
+        *signed_len = strlen(digest);
+        result = 0;
+    }
 
-    
-
+    json_object_clear(root_object);
+    return result;
 }
 
 int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char* data, size_t data_len, unsigned char** signed_value, size_t* signed_len)
@@ -216,10 +275,6 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     int result;
     BUFFER_HANDLE json_to_send = NULL;
     BUFFER_HANDLE http_response = NULL;
-    STRING_HANDLE uri_path = NULL;
-    HTTPAPIEX_HANDLE httpapi_ex_handle = NULL;
-    HTTP_HEADERS_HANDLE http_headers_handle = NULL;
-    unsigned int* http_status;
     
     if (handle == NULL || data == NULL || data_len == 0 || signed_value == NULL || signed_len == NULL)
     {
@@ -230,34 +285,29 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_info = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        json_to_send = construct_json_signing_blob(data, NULL);
-            
-        httpapi_ex_handle = HTTPAPIEX_Create(hostname);
-
-        http_headers_handle = HTTPHeaders_Alloc();
-
-        HTTPHeaders_AddHeaderNameValuePair(http_headers_handle, HTTP_HEADER_KEY_CONTENT_TYPE, HTTP_HEADER_VAL_CONTENT_TYPE);
-        
-        uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, moduleId, hsm_client_info->api_version);
-
-        HTTPAPIEX_ExecuteRequest(httpapi_ex_handle, HTTPAPI_REQUEST_POST, uri_path, NULL,
-                                 json_to_send, &http_status, NULL, &http_response);
-
-        if (http_status >= 300)
+        if ((json_to_send = construct_json_signing_blob(data, NULL)) == NULL)
         {
-            ;
+            LogError("construct_json_signing_blob failed");
+            result = __FAILURE__;
         }
-
-        (void)hsm_client_info;
-        result = 0;
+        else if ((http_response = send_http_signing_request(hsm_client_info, json_to_send)) == NULL)
+        {
+            LogError("send_http_signing_request failed");
+            result = __FAILURE__;
+        }
+        else if (parse_json_signing_response(http_response, signed_value, signed_len) == 0)
+        {
+            LogError("parse_json_signing_response failed");
+            result = __FAILURE__;
+        }
+        else
+        {
+            result = 0;
+        }
     }
 
-    STRING_delete(uri);
     BUFFER_delete(json_to_send);
-    HTTPAPIEX_Destroy(httpapi_ex_handle);
-    HTTPHeaders_Free(http_headers_handle);
     BUFFER_delete(http_response);
-    
     return result;
 }
 
