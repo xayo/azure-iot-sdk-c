@@ -2542,35 +2542,88 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetInputMessageCallback(IOTHUB_CLIENT_LL_HA
     return IoTHubClient_LL_SetInputMessageCallbackImpl(iotHubClientHandle, inputName, eventHandlerCallback, NULL, userContextCallback, NULL, 0);
 }
 
-static const char* ENVIRONMENT_VAR_AUTHSCHEME = "IOTEDGE_AUTHSCHEME";
+static const char* ENVIRONMENT_VAR_EDGEAUTHSCHEME = "IOTEDGE_AUTHSCHEME";
+static const char* ENVIRONMENT_VAR_EDGEDEVICEID =  "IOTEDGE_DEVICEID";
+static const char* ENVIRONMENT_VAR_EDGEMODULEID =  "IOTEDGE_MODULEID";
+static const char* ENVIRONMENT_VAR_EDGEHUBHOSTNAME =  "IOTEDGE_IOTHUBHOSTNAME";
+static const char* ENVIRONMENT_VAR_EDGEGATEWAYHOST = "IOTEDGE_GATEWAYHOSTNAME";
+
 static const char* SAS_TOKEN_AUTH = "SasToken";
+
+typedef struct EDGE_ENVIRONMENT_VARIABLES_TAG
+{
+    const char* auth_scheme;
+    const char* device_id;
+    const char* hubhostname;
+    const char* gatewayhostname;
+    const char* module_id;
+} EDGE_ENVIRONMENT_VARIABLES;
+
+static int retrieve_edge_environment_variabes(EDGE_ENVIRONMENT_VARIABLES *edge_environment_variables)
+{
+    int result;
+
+    if ((edge_environment_variables->auth_scheme = environment_get_variable(ENVIRONMENT_VAR_EDGEAUTHSCHEME)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEAUTHSCHEME);
+        result = __FAILURE__;
+    }
+    else if (strcmp(edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH) != 0)
+    {
+        LogError("Environment %s was set to %s, but only support for %s", ENVIRONMENT_VAR_EDGEAUTHSCHEME, edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH);
+        result = __FAILURE__;
+    }
+    else if ((edge_environment_variables->device_id = environment_get_variable(ENVIRONMENT_VAR_EDGEDEVICEID)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEDEVICEID);
+        result = __FAILURE__;
+    }
+    else if ((edge_environment_variables->hubhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEHUBHOSTNAME)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEHUBHOSTNAME);
+        result = __FAILURE__;
+    }
+    else if ((edge_environment_variables->gatewayhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEGATEWAYHOST)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEGATEWAYHOST);
+        result = __FAILURE__;
+    }
+    else if ((edge_environment_variables->module_id = environment_get_variable(ENVIRONMENT_VAR_EDGEMODULEID)) == NULL)
+    {
+        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEMODULEID);
+        result = __FAILURE__;
+    }    
+    else
+    {
+        result = 0;
+    }
+
+    return result;
+}
 
 IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
     IOTHUB_CLIENT_LL_HANDLE result;
-    
-    const char* auth_scheme;
-    if ((auth_scheme = environment_get_variable(ENVIRONMENT_VAR_AUTHSCHEME)) == NULL)
+    EDGE_ENVIRONMENT_VARIABLES edge_environment_variables;
+    IOTHUB_CLIENT_CONFIG client_config;
+
+    memset(&edge_environment_variables, 0, sizeof(edge_environment_variables));
+    memset(&client_config, 0, sizeof(client_config));
+
+    if (retrieve_edge_environment_variabes(&edge_environment_variables) != 0)
     {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_AUTHSCHEME);
-        result = NULL;
-    }
-    else if (strcmp(auth_scheme,SAS_TOKEN_AUTH) != 0)
-    {
-        LogError("Environment %s was set to %s, but only support for %s", ENVIRONMENT_VAR_AUTHSCHEME, auth_scheme, SAS_TOKEN_AUTH);
+        LogError("retrieve_edge_environment_variabes failed");
         result = NULL;
     }
     else
     {
-        IOTHUB_CLIENT_CONFIG c;
-        memset(&c, 0, sizeof(c));
-        c.protocol = protocol;
-        c.deviceId = environment_get_variable("IOTEDGE_DEVICEID");
+        client_config.protocol = protocol;
+        client_config.deviceId = edge_environment_variables.device_id;
         // TODO: Need to split out the hubName / suffix here.
-        c.iotHubName =  c.iotHubSuffix = environment_get_variable("IOTEDGE_IOTHUBHOSTNAME");
-        c.protocolGatewayHostName = environment_get_variable("IOTEDGE_GATEWAYHOSTNAME");
+        client_config.iotHubName =  client_config.iotHubSuffix = edge_environment_variables.hubhostname;
+        client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
 
-        result = initialize_iothub_client(&c, NULL, true, environment_get_variable("IOTEDGE_MODULEID"));
+        result = initialize_iothub_client(&client_config, NULL, true, edge_environment_variables.module_id);
     }
 
     return result;

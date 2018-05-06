@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
 #include "azure_c_shared_utility/urlencode.h"
 #include "azure_c_shared_utility/strings.h"
@@ -25,14 +26,6 @@ static const char* HSM_EDGE_SIGN_DEFAULT_ALGORITHM = "HMACSHA256";
 static const char* HSM_EDGE_SIGN_JSON_DATA = "Data";
 static const char* HSM_EDGE_SIGN_JSON_DIGEST = "digest";
 
-
-/*
-#include "azure_c_shared_utility/gballoc.h"
-#include "azure_c_shared_utility/sastoken.h"
-#include "azure_c_shared_utility/base64.h"
-#include "azure_c_shared_utility/sha.h"
-*/
-
 #include "hsm_client_http_edge.h"
 
 static const char* iotedge_uri_environment = "IOTEDGE_IOTEDGEDURI";
@@ -40,10 +33,13 @@ static const char* iotedge_api_version_environment = "IOTEDGE_IOTEDGEDVERSION";
 
 typedef struct HSM_CLIENT_HTTP_EDGE
 {
-    char* iotedge_uri; // IOTEDGE_IOTEDGEDURI
+    char* edge_hostname;
+    int   edge_portnumber;
     char* api_version; // IOTEDGE_IOTEDGEDVERSION
 } HSM_CLIENT_HTTP_EDGE;
 
+static const char* http_prefix = "http://";
+static const int http_prefix_len = sizeof(http_prefix) - 1;
 
 static HSM_CLIENT_HTTP_EDGE_INTERFACE http_edge_interface = 
 {
@@ -53,15 +49,60 @@ static HSM_CLIENT_HTTP_EDGE_INTERFACE http_edge_interface =
     hsm_client_http_edge_sign_data
 };
 
-static int initialize_http_edge_device(HSM_CLIENT_HTTP_EDGE* http_edge)
+// This is the string we use to connect to the edge device itself.  An example will be 
+// http://127.0.0.1:8080.  Note NOT "https" as that would require us to trust the edgelet's
+// server certificate, which we can't because we're still bootstrapping.
+static int read_and_parse_edge_uri(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge)
 {
-    int result;
     const char* iotedge_uri;
-    const char* api_version;
+    const char* colon_begin;
+    int result;
 
     if ((iotedge_uri = environment_get_variable(iotedge_uri_environment)) == NULL)
     {
         LogError("Environment variable %s not specified", iotedge_uri_environment);
+        result = __FAILURE__;
+    }
+    else if (strncmp(iotedge_uri, http_prefix, http_prefix_len) != 0)
+    {
+        LogError("EdgeUri is set to %s, but must begin with %s", iotedge_uri, http_prefix);
+        result = __FAILURE__;
+    }
+    else if ((colon_begin = strchr(iotedge_uri + http_prefix_len + 1, ':')) == NULL)
+    {
+        LogError("EdgeUri is set to %s, missing ':' to indicate port number", iotedge_uri);
+        result = __FAILURE__;
+    }
+    else if ((hsm_client_http_edge->edge_portnumber = atoi(colon_begin + 1)) == 0)
+    {
+        LogError("EdgeUri is set to %s, port number is not legal", iotedge_uri);
+        result = __FAILURE__;
+    }
+    else if ((hsm_client_http_edge->edge_hostname = malloc(colon_begin - iotedge_uri)) == NULL)
+    {
+        LogError("Failed allocating edge_hostname");
+        result = __FAILURE__;
+    }
+    else
+    {
+        const char* hostname_start = iotedge_uri + http_prefix_len;
+        size_t chars_to_copy = colon_begin - iotedge_uri - http_prefix_len;
+        strncpy(hsm_client_http_edge->edge_hostname, hostname_start, chars_to_copy);
+        hsm_client_http_edge->edge_hostname[chars_to_copy] = 0;
+        result = 0;
+    }
+
+    return result;
+}
+
+static int initialize_http_edge_device(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge)
+{
+    int result;
+    const char* api_version;
+
+    if (read_and_parse_edge_uri(hsm_client_http_edge) != 0)
+    {
+        LogError("read_and_parse_edge_uri failed");
         result = __FAILURE__;
     }
     else if ((api_version = environment_get_variable(iotedge_api_version_environment)) == NULL)
@@ -69,14 +110,9 @@ static int initialize_http_edge_device(HSM_CLIENT_HTTP_EDGE* http_edge)
         LogError("Environment variable %s not specified", iotedge_api_version_environment);
         result = __FAILURE__;
     }
-    else if (mallocAndStrcpy_s(&http_edge->iotedge_uri, iotedge_uri) != 0)
+    else if (mallocAndStrcpy_s(&hsm_client_http_edge->api_version, api_version) != 0)
     {
-        LogError("Failed copying data");
-        result = __FAILURE__;
-    }
-    else if (mallocAndStrcpy_s(&http_edge->api_version, api_version) != 0)
-    {
-        LogError("Failed copying data");
+        LogError("Failed copying api_version");
         result = __FAILURE__;
     }
     else
@@ -113,8 +149,10 @@ void hsm_client_http_edge_destroy(HSM_CLIENT_HANDLE handle)
 {
     if (handle != NULL)
     {
-        HSM_CLIENT_HTTP_EDGE* hsm_client_info = (HSM_CLIENT_HTTP_EDGE*)handle;
-        free(hsm_client_info);
+        HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
+        free(hsm_client_http_edge->edge_hostname);
+        free(hsm_client_http_edge->api_version);
+        free(hsm_client_http_edge);
     }
 }
 
@@ -276,7 +314,7 @@ static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HT
     return (sign_context->http_response != NULL);
 }
 
-static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_info, BUFFER_HANDLE json_to_send)
+static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge, BUFFER_HANDLE json_to_send)
 {
     int result;
     STRING_HANDLE uri_path = NULL;
@@ -287,19 +325,16 @@ static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_
     HTTP_HEADERS_RESULT http_headers_result;
 
     SOCKETIO_CONFIG config;
-    config.accepted_socket = false;
-    config.hostname = "www.bing.com";
-    config.port = 80;
+    config.accepted_socket = NULL;
+    config.hostname = hsm_client_http_edge->edge_hostname;
+    config.port = hsm_client_http_edge->edge_portnumber;
 
     HSM_HTTP_EDGE_SIGNING_CONTEXT sign_context;
     sign_context.continue_running = true;
     sign_context.http_response = NULL;
 
-    const char* host_name = "www.bing.com";
-    int port_num = 80;
-
     // TODO - "" below should be module_id
-    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_info->iotedge_uri, "TODO-module-id", hsm_client_info->api_version)) == NULL)
+    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_http_edge->edge_hostname, "TODO-module-id", hsm_client_http_edge->api_version)) == NULL)
     {
         LogError("STRING_construct_sprintffailed");
         result = __FAILURE__;
@@ -309,7 +344,7 @@ static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_
         LogError("uhttp_client_create failed");
         result = __FAILURE__;
     }
-    else if ((http_open_result = uhttp_client_open(http_handle, host_name, port_num, on_edge_hsm_http_connected, &sign_context) != HTTP_CLIENT_OK) != HTTP_CLIENT_OK)
+    else if ((http_open_result = uhttp_client_open(http_handle, hsm_client_http_edge->edge_hostname, hsm_client_http_edge->edge_portnumber, on_edge_hsm_http_connected, &sign_context) != HTTP_CLIENT_OK) != HTTP_CLIENT_OK)
     {
         LogError("uhttp_client_open failed, err=%d", http_open_result);
         result = __FAILURE__;
@@ -404,14 +439,14 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     }
     else
     {
-        HSM_CLIENT_HTTP_EDGE* hsm_client_info = (HSM_CLIENT_HTTP_EDGE*)handle;
+        HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
 
         if ((json_to_send = construct_json_signing_blob(data, "TODO-module-id")) == NULL)
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;
         }
-        else if ((http_response = send_http_signing_request(hsm_client_info, json_to_send)) == NULL)
+        else if ((http_response = send_http_signing_request(hsm_client_http_edge, json_to_send)) == NULL)
         {
             LogError("send_http_signing_request failed");
             result = __FAILURE__;
