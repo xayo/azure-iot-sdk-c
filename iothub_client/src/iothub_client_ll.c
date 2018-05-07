@@ -955,8 +955,8 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromConnectionString(const char* c
     return result;
 }
 
-// Note: IoTHubClient_LL_CreateForModule is for private use only presently.
-IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
+// Note: IoTHubClient_LL_CreateForModuleInternal is for private use only presently.
+IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModuleInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
 {
     IOTHUB_CLIENT_LL_HANDLE result;
     /*Codes_SRS_IOTHUBCLIENT_LL_02_001: [IoTHubClient_LL_Create shall return NULL if config parameter is NULL or protocol field is NULL.]*/
@@ -987,7 +987,7 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(const IOTHUB_CLIENT_CONF
 
 IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_Create(const IOTHUB_CLIENT_CONFIG* config)
 {
-    return IoTHubClient_LL_CreateForModule(config, NULL);
+    return IoTHubClient_LL_CreateForModuleInternal(config, NULL);
 }
 
 

@@ -28,7 +28,7 @@ extern "C"
     *           invoking other functions for IoT Hub client and @c NULL on failure.
 
     */
-    MOCKABLE_FUNCTION(, IOTHUB_CLIENT_LL_HANDLE, Iothub_LL_Create_For_Module, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol);
+    MOCKABLE_FUNCTION(, IOTHUB_CLIENT_LL_HANDLE, IoTHubClient_LL_CreateForModule, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol);
 
 
 #ifdef __cplusplus

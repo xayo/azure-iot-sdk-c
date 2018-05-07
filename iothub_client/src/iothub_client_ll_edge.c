@@ -110,7 +110,7 @@ static int retrieve_edge_environment_variabes(EDGE_ENVIRONMENT_VARIABLES *edge_e
     return result;
 }
 
-IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
+IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
     IOTHUB_CLIENT_LL_HANDLE result;
     EDGE_ENVIRONMENT_VARIABLES edge_environment_variables;
@@ -136,7 +136,7 @@ IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROV
         client_config.iotHubName =  edge_environment_variables.iothub_name;
         client_config.iotHubSuffix = edge_environment_variables.iothub_suffix;
         client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
-        result = IoTHubClient_LL_CreateForModule(&client_config, edge_environment_variables.module_id);
+        result = IoTHubClient_LL_CreateForModuleInternal(&client_config, edge_environment_variables.module_id);
     }
 
     free(edge_environment_variables.iothub_buffer);
