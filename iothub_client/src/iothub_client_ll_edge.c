@@ -135,7 +135,8 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(IOTHUB_CLIENT_TRANSPORT_
         client_config.deviceId = edge_environment_variables.device_id;
         client_config.iotHubName =  edge_environment_variables.iothub_name;
         client_config.iotHubSuffix = edge_environment_variables.iothub_suffix;
-        client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
+        //client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
+        client_config.protocolGatewayHostName = NULL;
         result = IoTHubClient_LL_CreateForModuleInternal(&client_config, edge_environment_variables.module_id);
     }
 
