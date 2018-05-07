@@ -33,6 +33,10 @@ if(${dps_hsm_sastoken})
     add_unittest_directory(hsm_client_tpm_ut)
 endif()
 
+if(${hsm_type_edge_module})
+    add_unittest_directory(hsm_client_http_edge_ut)
+endif()
+
 if(${build_provisioning_service_client})
     #add_e2etest_directory(dps_client_e2e)
 endif()

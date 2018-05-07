@@ -350,7 +350,7 @@ static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_
 
     if ((uri_path = STRING_construct_sprintf("/modules/%s/certificate/server?api-version=%s", hsm_client_http_edge->module_id, hsm_client_http_edge->api_version)) == NULL)
     {
-        LogError("STRING_construct_sprintffailed");
+        LogError("STRING_construct_sprintf failed");
         result = __FAILURE__;
     }
     else if ((http_handle = uhttp_client_create(socketio_get_interface_description(), &config, on_edge_hsm_http_error, &sign_context)) == NULL)
