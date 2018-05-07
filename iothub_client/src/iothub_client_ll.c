@@ -2542,6 +2542,7 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_SetInputMessageCallback(IOTHUB_CLIENT_LL_HA
     return IoTHubClient_LL_SetInputMessageCallbackImpl(iotHubClientHandle, inputName, eventHandlerCallback, NULL, userContextCallback, NULL, 0);
 }
 
+static const char* ENVIRONMENT_VAR_EDGEHUBCONNECTIONSTRING = "EdgeHubConnectionString";
 static const char* ENVIRONMENT_VAR_EDGEAUTHSCHEME = "IOTEDGE_AUTHSCHEME";
 static const char* ENVIRONMENT_VAR_EDGEDEVICEID =  "IOTEDGE_DEVICEID";
 static const char* ENVIRONMENT_VAR_EDGEMODULEID =  "IOTEDGE_MODULEID";
@@ -2552,6 +2553,7 @@ static const char* SAS_TOKEN_AUTH = "SasToken";
 
 typedef struct EDGE_ENVIRONMENT_VARIABLES_TAG
 {
+    const char* connection_string;
     const char* auth_scheme;
     const char* device_id;
     const char* iothub_name;
@@ -2567,59 +2569,67 @@ static int retrieve_edge_environment_variabes(EDGE_ENVIRONMENT_VARIABLES *edge_e
     const char* edgehubhostname;
     char* edgehubhostname_separator;
 
-    if ((edge_environment_variables->auth_scheme = environment_get_variable(ENVIRONMENT_VAR_EDGEAUTHSCHEME)) == NULL)
+    if ((edge_environment_variables->connection_string = environment_get_variable(ENVIRONMENT_VAR_EDGEHUBCONNECTIONSTRING)) != NULL)
     {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEAUTHSCHEME);
-        result = __FAILURE__;
-    }
-    else if (strcmp(edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH) != 0)
-    {
-        LogError("Environment %s was set to %s, but only support for %s", ENVIRONMENT_VAR_EDGEAUTHSCHEME, edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH);
-        result = __FAILURE__;
-    }
-    else if ((edge_environment_variables->device_id = environment_get_variable(ENVIRONMENT_VAR_EDGEDEVICEID)) == NULL)
-    {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEDEVICEID);
-        result = __FAILURE__;
-    }
-    else if ((edgehubhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEHUBHOSTNAME)) == NULL)
-    {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEHUBHOSTNAME);
-        result = __FAILURE__;
-    }
-    else if ((edge_environment_variables->gatewayhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEGATEWAYHOST)) == NULL)
-    {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEGATEWAYHOST);
-        result = __FAILURE__;
-    }
-    else if ((edge_environment_variables->module_id = environment_get_variable(ENVIRONMENT_VAR_EDGEMODULEID)) == NULL)
-    {
-        LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEMODULEID);
-        result = __FAILURE__;
-    }
-    // Make a copy of just ENVIRONMENT_VAR_EDGEHUBHOSTNAME.  We need to make changes in place (namely inserting a '\0')
-    // and can't do this with system environment variable safely.
-    else if (mallocAndStrcpy_s(&edge_environment_variables->iothub_buffer, edgehubhostname) != 0)
-    {
-        LogError("Unable to copy buffer");
-        result = __FAILURE__;
-    }
-    else if ((edgehubhostname_separator = strchr(edge_environment_variables->iothub_buffer, '.')) == NULL)
-    {
-        LogError("Environment edgehub %s invalid, requires '.' separator", edge_environment_variables->iothub_buffer);
-        result = __FAILURE__;
-    }
-    else if (*(edgehubhostname_separator + 1) == 0)
-    {
-        LogError("Environment edgehub %s invalid, no content after '.' separator", edge_environment_variables->iothub_buffer);
-        result = __FAILURE__;
+        // If a connection string is set, we use it and ignore all other environment variables.
+        result = 0;
     }
     else
     {
-        edge_environment_variables->iothub_name = edge_environment_variables->iothub_buffer;
-        *edgehubhostname_separator = 0;
-        edge_environment_variables->iothub_suffix = edgehubhostname_separator + 1;
-        result = 0;
+        if ((edge_environment_variables->auth_scheme = environment_get_variable(ENVIRONMENT_VAR_EDGEAUTHSCHEME)) == NULL)
+        {
+            LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEAUTHSCHEME);
+            result = __FAILURE__;
+        }
+        else if (strcmp(edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH) != 0)
+        {
+            LogError("Environment %s was set to %s, but only support for %s", ENVIRONMENT_VAR_EDGEAUTHSCHEME, edge_environment_variables->auth_scheme, SAS_TOKEN_AUTH);
+            result = __FAILURE__;
+        }
+        else if ((edge_environment_variables->device_id = environment_get_variable(ENVIRONMENT_VAR_EDGEDEVICEID)) == NULL)
+        {
+            LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEDEVICEID);
+            result = __FAILURE__;
+        }
+        else if ((edgehubhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEHUBHOSTNAME)) == NULL)
+        {
+            LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEHUBHOSTNAME);
+            result = __FAILURE__;
+        }
+        else if ((edge_environment_variables->gatewayhostname = environment_get_variable(ENVIRONMENT_VAR_EDGEGATEWAYHOST)) == NULL)
+        {
+            LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEGATEWAYHOST);
+            result = __FAILURE__;
+        }
+        else if ((edge_environment_variables->module_id = environment_get_variable(ENVIRONMENT_VAR_EDGEMODULEID)) == NULL)
+        {
+            LogError("Environment %s not set", ENVIRONMENT_VAR_EDGEMODULEID);
+            result = __FAILURE__;
+        }
+        // Make a copy of just ENVIRONMENT_VAR_EDGEHUBHOSTNAME.  We need to make changes in place (namely inserting a '\0')
+        // and can't do this with system environment variable safely.
+        else if (mallocAndStrcpy_s(&edge_environment_variables->iothub_buffer, edgehubhostname) != 0)
+        {
+            LogError("Unable to copy buffer");
+            result = __FAILURE__;
+        }
+        else if ((edgehubhostname_separator = strchr(edge_environment_variables->iothub_buffer, '.')) == NULL)
+        {
+            LogError("Environment edgehub %s invalid, requires '.' separator", edge_environment_variables->iothub_buffer);
+            result = __FAILURE__;
+        }
+        else if (*(edgehubhostname_separator + 1) == 0)
+        {
+            LogError("Environment edgehub %s invalid, no content after '.' separator", edge_environment_variables->iothub_buffer);
+            result = __FAILURE__;
+        }
+        else
+        {
+            edge_environment_variables->iothub_name = edge_environment_variables->iothub_buffer;
+            *edgehubhostname_separator = 0;
+            edge_environment_variables->iothub_suffix = edgehubhostname_separator + 1;
+            result = 0;
+        }
     }
 
     return result;
@@ -2629,18 +2639,23 @@ IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROV
 {
     IOTHUB_CLIENT_LL_HANDLE result;
     EDGE_ENVIRONMENT_VARIABLES edge_environment_variables;
-    IOTHUB_CLIENT_CONFIG client_config;
 
     memset(&edge_environment_variables, 0, sizeof(edge_environment_variables));
-    memset(&client_config, 0, sizeof(client_config));
 
     if (retrieve_edge_environment_variabes(&edge_environment_variables) != 0)
     {
         LogError("retrieve_edge_environment_variabes failed");
         result = NULL;
     }
+    else if (edge_environment_variables.connection_string != NULL)
+    {
+        result = IoTHubClient_LL_CreateFromConnectionString(edge_environment_variables.connection_string, protocol);
+    }
     else
     {
+        IOTHUB_CLIENT_CONFIG client_config;
+
+        memset(&client_config, 0, sizeof(client_config));
         client_config.protocol = protocol;
         client_config.deviceId = edge_environment_variables.device_id;
         client_config.iotHubName =  edge_environment_variables.iothub_name;
@@ -2650,7 +2665,6 @@ IOTHUB_CLIENT_LL_HANDLE Iothub_LL_Create_For_Module(IOTHUB_CLIENT_TRANSPORT_PROV
     }
 
     free(edge_environment_variables.iothub_buffer);
-
     return result;
 }
 

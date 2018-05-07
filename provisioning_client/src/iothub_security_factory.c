@@ -73,7 +73,6 @@ int iothub_security_init(IOTHUB_SECURITY_TYPE sec_type)
 #ifdef HSM_TYPE_HTTP_EDGE
         else if (device_type == SECURE_DEVICE_TYPE_HTTP_EDGE)
         {
-            // BUGBUG - clean up code blocks here.
             if (g_security_type != IOTHUB_SECURITY_TYPE_HTTP_EDGE)
             {
                 result = __FAILURE__;

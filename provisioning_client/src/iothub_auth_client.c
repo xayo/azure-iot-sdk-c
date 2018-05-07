@@ -84,9 +84,14 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         {
             result->cred_type = AUTH_TYPE_SAS;
             const HSM_CLIENT_HTTP_EDGE_INTERFACE* http_edge_interface = hsm_client_http_edge_interface();
-            result->hsm_client_create = http_edge_interface->hsm_client_http_edge_create;
-            result->hsm_client_destroy = http_edge_interface->hsm_client_http_edge_destroy;
-            result->hsm_client_sign_data = http_edge_interface->hsm_client_sign_with_identity;
+            if (((result->hsm_client_create = http_edge_interface->hsm_client_http_edge_create) == NULL) ||
+                ((result->hsm_client_destroy = http_edge_interface->hsm_client_http_edge_destroy) == NULL) ||
+                ((result->hsm_client_sign_data = http_edge_interface->hsm_client_sign_with_identity) == NULL))
+            {
+                LogError("Invalid secure device interface");
+                free(result);
+                result = NULL;
+            }
         }
 #endif
         if (result != NULL)
