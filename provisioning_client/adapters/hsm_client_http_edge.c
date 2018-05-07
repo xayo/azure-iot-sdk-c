@@ -28,14 +28,17 @@ static const char* HSM_EDGE_SIGN_JSON_DIGEST = "digest";
 
 #include "hsm_client_http_edge.h"
 
-static const char* iotedge_uri_environment = "IOTEDGE_IOTEDGEDURI";
-static const char* iotedge_api_version_environment = "IOTEDGE_IOTEDGEDVERSION";
+static const char* ENVIRONMENT_VAR_EDGEURI = "IOTEDGE_IOTEDGEDURI";
+static const char* ENVIRONMENT_VAR_EDGEVERSION = "IOTEDGE_IOTEDGEDVERSION";
+static const char* ENVIRONMENT_VAR_EDGEMODULEID = "IOTEDGE_MODULEID";
+
 
 typedef struct HSM_CLIENT_HTTP_EDGE
 {
     char* edge_hostname;
     int   edge_portnumber;
     char* api_version; // IOTEDGE_IOTEDGEDVERSION
+    char* module_id;
 } HSM_CLIENT_HTTP_EDGE;
 
 static const char* http_prefix = "http://";
@@ -58,9 +61,9 @@ static int read_and_parse_edge_uri(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge)
     const char* colon_begin;
     int result;
 
-    if ((iotedge_uri = environment_get_variable(iotedge_uri_environment)) == NULL)
+    if ((iotedge_uri = environment_get_variable(ENVIRONMENT_VAR_EDGEURI)) == NULL)
     {
-        LogError("Environment variable %s not specified", iotedge_uri_environment);
+        LogError("Environment variable %s not specified", ENVIRONMENT_VAR_EDGEURI);
         result = __FAILURE__;
     }
     else if (strncmp(iotedge_uri, http_prefix, http_prefix_len) != 0)
@@ -99,20 +102,31 @@ static int initialize_http_edge_device(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edg
 {
     int result;
     const char* api_version;
+    const char* module_id;
 
-    if (read_and_parse_edge_uri(hsm_client_http_edge) != 0)
+    if ((api_version = environment_get_variable(ENVIRONMENT_VAR_EDGEVERSION)) == NULL)
     {
-        LogError("read_and_parse_edge_uri failed");
+        LogError("Environment variable %s not specified", ENVIRONMENT_VAR_EDGEVERSION);
         result = __FAILURE__;
     }
-    else if ((api_version = environment_get_variable(iotedge_api_version_environment)) == NULL)
+    else if ((module_id = environment_get_variable(ENVIRONMENT_VAR_EDGEMODULEID)) == NULL)
     {
-        LogError("Environment variable %s not specified", iotedge_api_version_environment);
+        LogError("Environment variable %s not specified", ENVIRONMENT_VAR_EDGEMODULEID);
+        result = __FAILURE__;
+    }
+    else if (read_and_parse_edge_uri(hsm_client_http_edge) != 0)
+    {
+        LogError("read_and_parse_edge_uri failed");
         result = __FAILURE__;
     }
     else if (mallocAndStrcpy_s(&hsm_client_http_edge->api_version, api_version) != 0)
     {
         LogError("Failed copying api_version");
+        result = __FAILURE__;
+    }
+    else if (mallocAndStrcpy_s(&hsm_client_http_edge->module_id, module_id) != 0)
+    {
+        LogError("Failed copying module_id");
         result = __FAILURE__;
     }
     else
@@ -152,6 +166,7 @@ void hsm_client_http_edge_destroy(HSM_CLIENT_HANDLE handle)
         HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
         free(hsm_client_http_edge->edge_hostname);
         free(hsm_client_http_edge->api_version);
+        free(hsm_client_http_edge->module_id);
         free(hsm_client_http_edge);
     }
 }
@@ -333,8 +348,7 @@ static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_
     sign_context.continue_running = true;
     sign_context.http_response = NULL;
 
-    // TODO - "" below should be module_id
-    if ((uri_path = STRING_construct_sprintf("%s/modules/%s/certificate/server?api-version=%s", hsm_client_http_edge->edge_hostname, "TODO-module-id", hsm_client_http_edge->api_version)) == NULL)
+    if ((uri_path = STRING_construct_sprintf("/modules/%s/certificate/server?api-version=%s", hsm_client_http_edge->module_id, hsm_client_http_edge->api_version)) == NULL)
     {
         LogError("STRING_construct_sprintffailed");
         result = __FAILURE__;
@@ -441,7 +455,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        if ((json_to_send = construct_json_signing_blob(data, "TODO-module-id")) == NULL)
+        if ((json_to_send = construct_json_signing_blob(data, hsm_client_http_edge->module_id)) == NULL)
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;
