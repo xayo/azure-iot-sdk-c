@@ -68,15 +68,16 @@ static void _Bool_ToString(char* string, size_t bufferSize, _Bool val)
 #define TEST_ENV_IOTHUB_NAME "edgehubtest1"
 #define TEST_ENV_IOTHUB_SUFFIX "azure-devices.net"
 static const char* TEST_ENV_AUTHSCHEME = "SasToken";
+static const char* TEST_ENV_AUTHSCHEME_INVALID = "SasToken_Invalid";
 static const char* TEST_ENV_DEVICEID = "Test_DeviceId";
 static const char* TEST_ENV_HOSTNAME = TEST_ENV_IOTHUB_NAME "." TEST_ENV_IOTHUB_SUFFIX;
 static const char* TEST_ENV_EDGEGATEWAY = "127.0.0.1";
 static const char* TEST_ENV_MODULEID = "Test_ModuleId";
+static const char* TEST_ENV_HOSTNAME_NO_SEPARATOR = "there-is-no-period-here-not-legal-host";
+static const char* TEST_ENV_HOSTNAME_NO_CONTENT_POST_SEPARATOR = "no-suffix-specified.";
 
 static const IOTHUB_CLIENT_LL_HANDLE TEST_CLIENT_HANDLE_FROM_CONNSTR =  (IOTHUB_CLIENT_LL_HANDLE)1;
 static const IOTHUB_CLIENT_LL_HANDLE TEST_CLIENT_HANDLE_FROM_CREATE_MOD_INTERNAL =  (IOTHUB_CLIENT_LL_HANDLE)2;
-
-
 
 static const IOTHUB_CLIENT_TRANSPORT_PROVIDER TEST_TRANSPORT_PROVIDER = (IOTHUB_CLIENT_TRANSPORT_PROVIDER)0x1110;
 
@@ -141,7 +142,7 @@ TEST_SUITE_CLEANUP(suite_cleanup)
 
 TEST_FUNCTION_INITIALIZE(TestMethodInitialize)
 {
-    ;
+    umock_c_reset_all_calls();
 }
 
 TEST_FUNCTION_CLEANUP(TestMethodCleanup)
@@ -173,25 +174,92 @@ TEST_FUNCTION(IoTHubClient_LL_CreateForModule_use_connection_string)
     ASSERT_ARE_EQUAL_WITH_MSG(bool, true, h == TEST_CLIENT_HANDLE_FROM_CONNSTR, "IoTHubClient_LL_CreateForModule returns wrong handle");
 }
 
-// All environment variables are specified
-TEST_FUNCTION(IoTHubClient_LL_CreateForModule_success)
+static void set_expected_environment_var_setup(const char* hostname_env)
 {
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(NULL);
-
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_AUTHSCHEME);
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_DEVICEID);
-    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_HOSTNAME);
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(hostname_env);
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_EDGEGATEWAY);
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_MODULEID);
     STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-         
+}
+
+// All environment variables are specified
+TEST_FUNCTION(IoTHubClient_LL_CreateForModule_success)
+{
+    set_expected_environment_var_setup(TEST_ENV_HOSTNAME);
     STRICT_EXPECTED_CALL(IoTHubClient_LL_CreateForModuleInternal(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
 
     IOTHUB_CLIENT_LL_HANDLE h = IoTHubClient_LL_CreateForModule(TEST_TRANSPORT_PROVIDER);
     ASSERT_ARE_EQUAL_WITH_MSG(bool, true, h == TEST_CLIENT_HANDLE_FROM_CREATE_MOD_INTERNAL, "IoTHubClient_LL_CreateForModule returns wrong handle");
 }
 
+// The authscheme environment variable must be TEST_ENV_AUTHSCHEME, anything else causes a failure.
+TEST_FUNCTION(IoTHubClient_LL_CreateForModule_fail_bad_authscheme)
+{
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_AUTHSCHEME_INVALID);
 
+    IOTHUB_CLIENT_LL_HANDLE h = IoTHubClient_LL_CreateForModule(TEST_TRANSPORT_PROVIDER);
+    ASSERT_IS_NULL(h);
+}
 
+// The hostname must be in format "<hostName>.<suffix>".  Pass in with no "."
+TEST_FUNCTION(IoTHubClient_LL_CreateForModule_fail_no_hostname_separator)
+{
+    set_expected_environment_var_setup(TEST_ENV_HOSTNAME_NO_SEPARATOR);
+    IOTHUB_CLIENT_LL_HANDLE h = IoTHubClient_LL_CreateForModule(TEST_TRANSPORT_PROVIDER);
+    ASSERT_IS_NULL(h);
+}
+
+// The hostname must be in format "<hostName>.<suffix>".  Pass in with no content after "."
+TEST_FUNCTION(IoTHubClient_LL_CreateForModule_fail_no_hostname_content_post_separator)
+{
+    set_expected_environment_var_setup(TEST_ENV_HOSTNAME_NO_CONTENT_POST_SEPARATOR);
+    IOTHUB_CLIENT_LL_HANDLE h = IoTHubClient_LL_CreateForModule(TEST_TRANSPORT_PROVIDER);
+    ASSERT_IS_NULL(h);
+}
+
+// The hostname must be in format "<hostName>.<suffix>".  Pass in with no content after "."
+TEST_FUNCTION(IoTHubClient_LL_CreateForModule_failures)
+{
+    // arrange
+    int negativeTestsInitResult = umock_c_negative_tests_init();
+    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+    set_expected_environment_var_setup(TEST_ENV_HOSTNAME);
+    STRICT_EXPECTED_CALL(IoTHubClient_LL_CreateForModuleInternal(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+
+    umock_c_negative_tests_snapshot();
+
+    size_t calls_cannot_fail[] = {
+        0, // Skip the call for retrieving connection string; in typical case it will return NULL
+    };
+
+    // act
+    size_t count = umock_c_negative_tests_call_count();
+    for (size_t index = 0; index < count; index++)
+    {
+        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail)/sizeof(calls_cannot_fail[0])) != 0)
+        {
+            continue;
+        }
+    
+        umock_c_negative_tests_reset();
+        umock_c_negative_tests_fail_call(index);
+        
+
+        char tmp_msg[64];
+        sprintf(tmp_msg, "IoTHubClient_LL_CreateForModule failure in test %zu/%zu", index, count);
+        IOTHUB_CLIENT_LL_HANDLE h = IoTHubClient_LL_CreateForModule(TEST_TRANSPORT_PROVIDER);
+
+        // assert
+        ASSERT_IS_NULL_WITH_MSG(h, tmp_msg);
+    }
+
+    // cleanup
+    umock_c_negative_tests_deinit();
+}
 
 END_TEST_SUITE(iothubclient_ll_edge_ut)
