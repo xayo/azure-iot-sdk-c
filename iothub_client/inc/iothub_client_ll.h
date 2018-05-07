@@ -661,20 +661,6 @@ DEFINE_ENUM(IOTHUB_CLIENT_IOTHUB_METHOD_STATUS, IOTHUB_CLIENT_IOTHUB_METHOD_STAT
     */
     MOCKABLE_FUNCTION(, IOTHUB_CLIENT_RESULT, IoTHubClient_LL_SetInputMessageCallback, IOTHUB_CLIENT_LL_HANDLE, iotHubClientHandle, const char*, inputName, IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC, eventHandlerCallback, void*, userContextCallback);
 
-
-    /**
-    * @brief	This API creates a module handle based on environment variables set in the Edge runtime.
-                NOTE: It is *ONLY* valid when the code is running in a container initiated by Edge.
-    *
-    * @param	protocol            Function pointer for protocol implementation
-    *
-    * @return	A non-NULL @c IOTHUB_CLIENT_LL_HANDLE value that is used when
-    *           invoking other functions for IoT Hub client and @c NULL on failure.
-
-    */
-    MOCKABLE_FUNCTION(, IOTHUB_CLIENT_LL_HANDLE, Iothub_LL_Create_For_Module, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol);
-
-
 #ifdef __cplusplus
 }
 #endif

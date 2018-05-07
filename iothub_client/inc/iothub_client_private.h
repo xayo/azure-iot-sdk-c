@@ -45,6 +45,8 @@ MOCKABLE_FUNCTION(, IOTHUB_CLIENT_RESULT, IoTHubClient_LL_SendMessageDisposition
 MOCKABLE_FUNCTION(, IOTHUB_CLIENT_RESULT, IoTHubClient_LL_GetOption, IOTHUB_CLIENT_LL_HANDLE, iotHubClientHandle, const char*, optionName, void**, value);
 MOCKABLE_FUNCTION(, bool, IoTHubClient_LL_MessageCallbackFromInput, IOTHUB_CLIENT_LL_HANDLE, handle, MESSAGE_CALLBACK_INFO*, message_data);
 MOCKABLE_FUNCTION(, IOTHUB_CLIENT_RESULT, IoTHubClient_LL_SetInputMessageCallbackEx, IOTHUB_CLIENT_LL_HANDLE, iotHubClientHandle, const char*, inputName, IOTHUB_CLIENT_MESSAGE_CALLBACK_ASYNC_EX, eventHandlerCallbackEx, void *, userContextCallback, size_t, userContextCallbackLength);
+MOCKABLE_FUNCTION(, IOTHUB_CLIENT_LL_HANDLE, IoTHubClient_LL_CreateForModule, const IOTHUB_CLIENT_CONFIG*, config, const char*, module_id);
+
 
 typedef struct IOTHUB_MESSAGE_LIST_TAG
 {
