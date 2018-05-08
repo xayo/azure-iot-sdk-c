@@ -191,6 +191,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
     char* serialized_string = NULL;
+    (void)module_id;
 
     if ((root_value = json_value_init_object()) == NULL)
     {
@@ -202,7 +203,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
         LogError("json_value_get_object failed");
         result = NULL;
     }
-    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_KEY_ID, module_id)) != JSONSuccess)
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_KEY_ID, "primary")) != JSONSuccess)
     {
         LogError("json_object_set_string failed for keyId");
         result = NULL;
@@ -222,7 +223,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, cons
         LogError("json_serialize_to_string failed");
         result = NULL;
     }
-    else if ((result = BUFFER_create((const unsigned char*)serialized_string, strlen(serialized_string))) == NULL)
+    else if ((result = BUFFER_create((const unsigned char*)serialized_string, strlen(serialized_string) + 1)) == NULL)
     {
         LogError("Buffer_Create failed");
         result = NULL;
@@ -312,10 +313,11 @@ static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HT
     const unsigned char* json_to_send_str = BUFFER_u_char(json_to_send);
     time_t start_request_time = get_time(NULL);
     bool timed_out = false;
+    HTTP_CLIENT_RESULT http_client_result;
 
-    if (uhttp_client_execute_request(http_handle, HTTP_CLIENT_REQUEST_POST, uri_path, http_headers_handle, json_to_send_str, strlen((const char*)json_to_send_str), on_edge_hsm_http_recv, sign_context) != HTTP_CLIENT_OK)
+    if ((http_client_result = uhttp_client_execute_request(http_handle, HTTP_CLIENT_REQUEST_POST, uri_path, http_headers_handle, json_to_send_str, strlen((const char*)json_to_send_str), on_edge_hsm_http_recv, sign_context)) != HTTP_CLIENT_OK)
     {
-        (void)printf("FAILED FURTHER HERE\r\n");
+		LogError("uhttp_client_execute_request failed, result=%d", http_client_result);
     }
     else
     {
@@ -348,7 +350,7 @@ static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_
     sign_context.continue_running = true;
     sign_context.http_response = NULL;
 
-    if ((uri_path = STRING_construct_sprintf("/modules/%s/certificate/server?api-version=%s", hsm_client_http_edge->module_id, hsm_client_http_edge->api_version)) == NULL)
+    if ((uri_path = STRING_construct_sprintf("/modules/%s/sign?api-version=%s", hsm_client_http_edge->module_id, hsm_client_http_edge->api_version)) == NULL)
     {
         LogError("STRING_construct_sprintf failed");
         result = __FAILURE__;
