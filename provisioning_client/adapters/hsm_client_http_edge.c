@@ -185,13 +185,12 @@ const HSM_CLIENT_HTTP_EDGE_INTERFACE* hsm_client_http_edge_interface()
     return &http_edge_interface;
 }
 
-static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, const char* module_id)
+static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data)
 {
     JSON_Value* root_value = NULL;
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
     char* serialized_string = NULL;
-    (void)module_id;
 
     if ((root_value = json_value_init_object()) == NULL)
     {
@@ -328,7 +327,7 @@ static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HT
         } while ((sign_context->continue_running == true) && (timed_out == false));
     }
 
-    return (sign_context->http_response != NULL);
+    return (sign_context->http_response != NULL) ? 0 : __FAILURE__;
 }
 
 static BUFFER_HANDLE send_http_signing_request(HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge, BUFFER_HANDLE json_to_send)
@@ -432,8 +431,8 @@ static int parse_json_signing_response(BUFFER_HANDLE http_response, unsigned cha
         LogError("Allocating signed_value failed");
         result = __FAILURE__;
     }
-    else
-    {     
+    else
+    {
         *signed_len = strlen(digest);
         result = 0;
     }
@@ -457,7 +456,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        if ((json_to_send = construct_json_signing_blob(data, hsm_client_http_edge->module_id)) == NULL)
+        if ((json_to_send = construct_json_signing_blob(data)) == NULL)
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;
@@ -467,7 +466,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
             LogError("send_http_signing_request failed");
             result = __FAILURE__;
         }
-        else if (parse_json_signing_response(http_response, signed_value, signed_len) == 0)
+        else if (parse_json_signing_response(http_response, signed_value, signed_len) != 0)
         {
             LogError("parse_json_signing_response failed");
             result = __FAILURE__;
