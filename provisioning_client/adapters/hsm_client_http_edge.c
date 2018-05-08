@@ -20,10 +20,10 @@
 
 static const char* HTTP_HEADER_KEY_CONTENT_TYPE = "Content-Type";
 static const char* HTTP_HEADER_VAL_CONTENT_TYPE = "application/json; charset=utf-8";
-static const char* HSM_EDGE_SIGN_JSON_KEY_ID = "KeyId";
-static const char* HSM_EDGE_SIGN_JSON_ALGORITHM = "Algo";
+static const char* HSM_EDGE_SIGN_JSON_KEY_ID = "keyId";
+static const char* HSM_EDGE_SIGN_JSON_ALGORITHM = "algo";
 static const char* HSM_EDGE_SIGN_DEFAULT_ALGORITHM = "HMACSHA256";
-static const char* HSM_EDGE_SIGN_JSON_DATA = "Data";
+static const char* HSM_EDGE_SIGN_JSON_DATA = "data";
 static const char* HSM_EDGE_SIGN_JSON_DIGEST = "digest";
 
 #include "hsm_client_http_edge.h"
