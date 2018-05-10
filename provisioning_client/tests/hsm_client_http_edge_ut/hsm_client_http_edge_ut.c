@@ -96,11 +96,15 @@ MOCKABLE_FUNCTION(, JSON_Object*, json_value_get_object, const JSON_Value *, val
 #define TEST_BUFFER_1 (unsigned char*)"TestData2"
 #define TEST_STRING_HANDLE1 (STRING_HANDLE)0x46
 #define TEST_STRING_HANDLE2 (STRING_HANDLE)0x47
+#define TEST_STRING_HANDLE3 (STRING_HANDLE)0x52
 #define TEST_BUFFER_HANDLE (BUFFER_HANDLE)0x48
-
 
 #define TEST_TIME ((double)3600)
 #define TEST_TIME_T ((time_t)TEST_TIME)
+#define TEST_TIME_FOR_TIMEOUT ((double)100000000)
+#define TEST_TIME_FOR_TIMEOUT_T ((time_t)TEST_TIME_FOR_TIMEOUT)
+
+
 
 
 #define TEST_HTTP_CLIENT_HANDLE (HTTP_CLIENT_HANDLE)0x49
@@ -204,24 +208,24 @@ static HTTP_CLIENT_RESULT my_uhttp_client_execute_request(HTTP_CLIENT_HANDLE han
     return HTTP_CLIENT_OK;
 }
 
-static const char* TEST_REPLY_JSON = "TestReplyJson";
-static unsigned int STATUS_CODE_SUCCESS = 200;
+static const unsigned char* TEST_REPLY_JSON = (const unsigned char*)"TestReplyJson";
+static unsigned int test_status_code_in_callback;
+HTTP_CALLBACK_REASON http_open_reason;
+HTTP_CALLBACK_REASON http_reply_recv_reason;
+static bool content_available;
+static bool timed_out;
 
 static void my_uhttp_client_dowork(HTTP_CLIENT_HANDLE handle)
 {
     (void)handle;
 
-    unsigned char* content;
-    //if (g_response_content_status == RESPONSE_ON)
-        content = (unsigned char*)TEST_REPLY_JSON;
-    //else
-    //    content = NULL;
-
+    const unsigned char* content = content_available ? TEST_REPLY_JSON : NULL;
+    
     if (g_uhttp_client_dowork_call_count == 0)
-        g_on_http_open(g_http_open_ctx, HTTP_CALLBACK_REASON_OK);
+        g_on_http_open(g_http_open_ctx, http_open_reason);
     else if (g_uhttp_client_dowork_call_count == 1)
     {
-        g_on_http_reply_recv(g_http_reply_recv_ctx, HTTP_CALLBACK_REASON_OK, content, 1, STATUS_CODE_SUCCESS, TEST_HTTP_HEADERS_HANDLE);
+        g_on_http_reply_recv(g_http_reply_recv_ctx, http_reply_recv_reason, content, 1, test_status_code_in_callback, TEST_HTTP_HEADERS_HANDLE);
     }
     g_uhttp_client_dowork_call_count++;
 }
@@ -231,6 +235,8 @@ TEST_SUITE_INITIALIZE(suite_init)
 {
     (void)umock_c_init(on_umock_c_error);
 
+    //REGISTER_TYPE(time_t, time_t);
+    REGISTER_UMOCK_ALIAS_TYPE(time_t, long long);
     REGISTER_UMOCK_ALIAS_TYPE(STRING_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(BUFFER_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_ERROR_CALLBACK, void*);
@@ -239,6 +245,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_OPEN_COMPLETE_CALLBACK, void*);
     REGISTER_UMOCK_ALIAS_TYPE(HTTP_CLIENT_REQUEST_TYPE, int);
     REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_REQUEST_CALLBACK, void*);
+
 
     REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_close, my_uhttp_client_close);
 
@@ -277,14 +284,22 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(URL_EncodeString, TEST_STRING_HANDLE1);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(URL_EncodeString, NULL);
 
+    REGISTER_GLOBAL_MOCK_RETURN(URL_Encode, TEST_STRING_HANDLE1);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(URL_Encode, NULL);
+
     REGISTER_GLOBAL_MOCK_RETURN(Base64_Encode_Bytes, TEST_STRING_HANDLE2);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(Base64_Encode_Bytes, NULL);
 
     REGISTER_GLOBAL_MOCK_RETURN(STRING_c_str, TEST_STRING_1);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(STRING_c_str, NULL);
 
+    REGISTER_GLOBAL_MOCK_RETURN(STRING_construct_n, TEST_STRING_HANDLE3);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(STRING_construct_n, NULL);
+
     REGISTER_GLOBAL_MOCK_RETURN(BUFFER_create, TEST_BUFFER_HANDLE);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(BUFFER_create, NULL);
+
+    
 
     REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_create, my_uhttp_client_create);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_create, NULL);
@@ -319,6 +334,16 @@ TEST_SUITE_CLEANUP(suite_cleanup)
 TEST_FUNCTION_INITIALIZE(method_init)
 {
     umock_c_reset_all_calls();
+    g_http_open_ctx = NULL;
+    g_on_http_reply_recv = NULL;
+    g_http_reply_recv_ctx = NULL;
+    g_uhttp_client_dowork_call_count = 0;    
+
+    test_status_code_in_callback = 200;
+    http_reply_recv_reason = HTTP_CALLBACK_REASON_OK;
+    http_open_reason =  HTTP_CALLBACK_REASON_OK;
+    content_available = true;
+    timed_out = false;
 }
 
 TEST_FUNCTION_CLEANUP(method_cleanup)
@@ -458,7 +483,8 @@ TEST_FUNCTION(hsm_client_http_edge_interface_succeed)
 
 static void set_expected_calls_construct_json_signing_blob()
 {
-    STRICT_EXPECTED_CALL(URL_EncodeString(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_construct_n(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(URL_Encode(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(STRING_concat(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
@@ -475,18 +501,19 @@ static void set_expected_calls_construct_json_signing_blob()
     STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
 }
 
 static void set_expected_calls_send_and_poll_http_signing_request()
 {
     STRICT_EXPECTED_CALL(BUFFER_u_char(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG)).SetReturn(TEST_TIME_T);
     STRICT_EXPECTED_CALL(uhttp_client_execute_request(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG)).SetReturn(timed_out ? TEST_TIME_FOR_TIMEOUT_T : TEST_TIME_T);
     STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(BUFFER_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG)).SetReturn(TEST_TIME_T);
 }
 
 static void set_expected_calls_send_http_signing_request(bool expect_success)
@@ -518,7 +545,7 @@ static void set_expected_calls_parse_json_signing_response()
     STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
 }
 
-static const unsigned char* TEST_SIGNING_DATA = (const unsigned char* )"Test/Data/To/Sign";
+static const unsigned char* TEST_SIGNING_DATA = (const unsigned char* )"Test/Data/To/Sign\nExpiry";
 static const int TEST_SIGNING_DATA_LENGTH = sizeof(TEST_SIGNING_DATA) - 1;
 
 static void set_expected_calls_hsm_client_http_edge_sign_data()
@@ -536,9 +563,11 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_succeed)
 
     HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
     unsigned char* signed_value = NULL;
-    size_t signed_len = 1234; // This is part of the length hack deal.
+    size_t signed_len;
 
     ASSERT_IS_NOT_NULL(sec_handle);
+
+    umock_c_reset_all_calls();
 
     set_expected_calls_hsm_client_http_edge_sign_data();
 
@@ -547,6 +576,54 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_succeed)
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     hsm_client_http_edge_destroy(sec_handle);    
+}
+
+static void test_http_failure_impl()
+{
+    setup_hsm_client_http_edge_create_mock(TEST_ENV_EDGEURI, true);
+
+    HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
+    unsigned char* signed_value = NULL;
+    size_t signed_len;
+
+    ASSERT_IS_NOT_NULL(sec_handle);
+
+    set_expected_calls_hsm_client_http_edge_sign_data();
+
+    int result = hsm_client_http_edge_sign_data(sec_handle, TEST_SIGNING_DATA, TEST_SIGNING_DATA_LENGTH, &signed_value, &signed_len);
+    ASSERT_ARE_NOT_EQUAL(int, result, 0);
+
+    hsm_client_http_edge_destroy(sec_handle);    
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_open_error)
+{
+    http_open_reason =  HTTP_CALLBACK_REASON_OPEN_FAILED;
+    test_http_failure_impl();
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_receive_error)
+{
+    http_reply_recv_reason = HTTP_CALLBACK_REASON_ERROR;
+    test_http_failure_impl();
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_receive_null_content)
+{
+    content_available = false;
+    test_http_failure_impl();
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_receive_bad_status_code)
+{
+    test_status_code_in_callback = 400;
+    test_http_failure_impl();
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_timeout)
+{
+    timed_out = true;
+    test_http_failure_impl();
 }
 
 
