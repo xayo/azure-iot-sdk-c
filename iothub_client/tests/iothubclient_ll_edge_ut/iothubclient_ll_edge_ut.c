@@ -75,6 +75,7 @@ static const char* TEST_ENV_EDGEGATEWAY = "127.0.0.1";
 static const char* TEST_ENV_MODULEID = "Test_ModuleId";
 static const char* TEST_ENV_HOSTNAME_NO_SEPARATOR = "there-is-no-period-here-not-legal-host";
 static const char* TEST_ENV_HOSTNAME_NO_CONTENT_POST_SEPARATOR = "no-suffix-specified.";
+static const char* TEST_ENV_CONNECTION_STRING = "Test_ConnectionString";
 
 static const IOTHUB_CLIENT_LL_HANDLE TEST_CLIENT_HANDLE_FROM_CONNSTR =  (IOTHUB_CLIENT_LL_HANDLE)1;
 static const IOTHUB_CLIENT_LL_HANDLE TEST_CLIENT_HANDLE_FROM_CREATE_MOD_INTERNAL =  (IOTHUB_CLIENT_LL_HANDLE)2;
@@ -178,8 +179,6 @@ static void set_expected_environment_var_setup(const char* hostname_env)
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_MODULEID);
     STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
 }
-
-static const char* TEST_ENV_CONNECTION_STRING = "Test_ConnectionString";
 
 // If the connection string environment variable is set, ignore all other environment variables and invoke IoTHubClient_LL_CreateFromConnectionString
 TEST_FUNCTION(IoTHubClient_LL_CreateForModule_use_connection_string)

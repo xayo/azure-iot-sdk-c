@@ -29,6 +29,31 @@ static void my_gballoc_free(void* ptr)
 #include "umock_c_negative_tests.h"
 #include "azure_c_shared_utility/macro_utils.h"
 
+static int bool_Compare(bool left, bool right)
+{
+    return left != right;
+}
+
+static void bool_ToString(char* string, size_t bufferSize, bool val)
+{
+    (void)bufferSize;
+    (void)strcpy(string, val ? "true" : "false");
+}
+
+#ifndef __cplusplus
+static int _Bool_Compare(_Bool left, _Bool right)
+{
+    return left != right;
+}
+
+static void _Bool_ToString(char* string, size_t bufferSize, _Bool val)
+{
+    (void)bufferSize;
+    (void)strcpy(string, val ? "true" : "false");
+}
+#endif
+
+
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
@@ -40,16 +65,19 @@ static void my_gballoc_free(void* ptr)
 #include "azure_c_shared_utility/socketio.h"
 #include "azure_uhttp_c/uhttp.h"
 #include "azure_c_shared_utility/env_variable.h"
+#include "azure_c_shared_utility/base64.h"
+#include "azure_c_shared_utility/urlencode.h"
+
 #include "parson.h"
 
+#define TEST_JSON_VALUE (JSON_Value*)0x11111111
+#define TEST_JSON_OBJECT (JSON_Object*)0x11111112
+static const char* TEST_CONST_CHAR_PTR = "TestConstChar";
+static JSON_Status TEST_JSON_STATUS = 0;
+static char* TEST_CHAR_PTR = "TestString";
 
-// #include "azure_c_shared_utility/sastoken.h"
-// #include "azure_c_shared_utility/base64.h"
-// #include "azure_c_shared_utility/sha.h"
-// #include "azure_c_shared_utility/urlencode.h"
 
-// #include "azure_utpm_c/tpm_codec.h"
-// #include "azure_utpm_c/Marshal_fp.h"
+
 
 MOCKABLE_FUNCTION(, JSON_Value*, json_parse_string, const char *, string);
 MOCKABLE_FUNCTION(, char*, json_serialize_to_string, const JSON_Value*, value);
@@ -64,11 +92,21 @@ MOCKABLE_FUNCTION(, JSON_Object*, json_value_get_object, const JSON_Value *, val
 
 #include "hsm_client_http_edge.h"
 
-// TODO: Cleanup unneeded stuff
-// static void my_STRING_delete(STRING_HANDLE h)
-// {
-//     my_gballoc_free((void*)h);
-// }
+#define TEST_STRING_1 "TestData1"
+#define TEST_BUFFER_1 (unsigned char*)"TestData2"
+#define TEST_STRING_HANDLE1 (STRING_HANDLE)0x46
+#define TEST_STRING_HANDLE2 (STRING_HANDLE)0x47
+#define TEST_BUFFER_HANDLE (BUFFER_HANDLE)0x48
+
+
+#define TEST_TIME ((double)3600)
+#define TEST_TIME_T ((time_t)TEST_TIME)
+
+
+#define TEST_HTTP_CLIENT_HANDLE (HTTP_CLIENT_HANDLE)0x49
+#define TEST_HTTP_HEADERS_HANDLE (HTTP_HEADERS_HANDLE)0x50
+#define TEST_SOCKETIO_INTERFACE_DESCRIPTION     (const IO_INTERFACE_DESCRIPTION*)0x51
+
 
 static int my_mallocAndStrcpy_s(char** destination, const char* source)
 {
@@ -85,7 +123,6 @@ STRING_HANDLE STRING_construct_sprintf(const char* format, ...)
     return (STRING_HANDLE)my_gballoc_malloc(1);
 }
 
-
 DEFINE_ENUM_STRINGS(UMOCK_C_ERROR_CODE, UMOCK_C_ERROR_CODE_VALUES)
 
 static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
@@ -95,11 +132,183 @@ static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
     ASSERT_FAIL(temp_str);
 }
 
+static int test_mallocAndStrcpy_s(char** destination, const char* source)
+{
+    (void)source;
+    size_t src_len = strlen(source);
+    *destination = (char*)my_gballoc_malloc(src_len + 1);
+    strcpy(*destination, source);
+    return 0;
+}
+
+HSM_HTTP_EDGE_SIGNING_CONTEXT* edge_signing_context;
+static int g_uhttp_client_dowork_call_count;
+static ON_HTTP_OPEN_COMPLETE_CALLBACK g_on_http_open;
+static void* g_http_open_ctx;
+static ON_HTTP_REQUEST_CALLBACK g_on_http_reply_recv;
+static void* g_http_reply_recv_ctx;
+
+
+static HTTP_CLIENT_HANDLE my_uhttp_client_create(const IO_INTERFACE_DESCRIPTION* io_interface_desc, const void* xio_param, ON_HTTP_ERROR_CALLBACK on_http_error, void* callback_ctx)
+{
+    (void)io_interface_desc;
+    (void)xio_param;
+    (void)on_http_error;
+    edge_signing_context = (HSM_HTTP_EDGE_SIGNING_CONTEXT*)callback_ctx;
+
+    ASSERT_ARE_EQUAL_WITH_MSG(bool, edge_signing_context->continue_running, true, "Signing context not in running mode");
+    ASSERT_IS_NULL_WITH_MSG(edge_signing_context->http_response, "HTTP response not NULL during initialization");
+
+    return (HTTP_CLIENT_HANDLE)my_gballoc_malloc(1);
+}
+
+static void my_uhttp_client_destroy(HTTP_CLIENT_HANDLE handle)
+{
+    my_gballoc_free(handle);
+}
+
+static HTTP_CLIENT_RESULT my_uhttp_client_open(HTTP_CLIENT_HANDLE handle, const char* host, int port_num, ON_HTTP_OPEN_COMPLETE_CALLBACK on_connect, void* callback_ctx)
+{
+    (void)handle;
+    (void)host;
+    (void)port_num;
+    g_on_http_open = on_connect;
+    g_http_open_ctx = callback_ctx; //prov_client
+
+    //note that a real malloc does occur in this fn, but it can't be mocked since it's in a field of handle
+
+    return HTTP_CLIENT_OK;
+}
+
+static void my_uhttp_client_close(HTTP_CLIENT_HANDLE handle, ON_HTTP_CLOSED_CALLBACK on_close_callback, void* callback_ctx)
+{
+    (void)handle;
+    (void)on_close_callback;
+    (void)callback_ctx;
+
+    //note that a real free does occur in this fn, but it can't be mocked since it's in a field of handle
+}
+
+static HTTP_CLIENT_RESULT my_uhttp_client_execute_request(HTTP_CLIENT_HANDLE handle, HTTP_CLIENT_REQUEST_TYPE request_type, const char* relative_path,
+    HTTP_HEADERS_HANDLE http_header_handle, const unsigned char* content, size_t content_len, ON_HTTP_REQUEST_CALLBACK on_request_callback, void* callback_ctx)
+{
+    (void)handle;
+    (void)request_type;
+    (void)relative_path;
+    (void)http_header_handle;
+    (void)content;
+    (void)content_len;
+    g_on_http_reply_recv = on_request_callback;
+    g_http_reply_recv_ctx = callback_ctx;
+
+    return HTTP_CLIENT_OK;
+}
+
+static const char* TEST_REPLY_JSON = "TestReplyJson";
+static unsigned int STATUS_CODE_SUCCESS = 200;
+
+static void my_uhttp_client_dowork(HTTP_CLIENT_HANDLE handle)
+{
+    (void)handle;
+
+    unsigned char* content;
+    //if (g_response_content_status == RESPONSE_ON)
+        content = (unsigned char*)TEST_REPLY_JSON;
+    //else
+    //    content = NULL;
+
+    if (g_uhttp_client_dowork_call_count == 0)
+        g_on_http_open(g_http_open_ctx, HTTP_CALLBACK_REASON_OK);
+    else if (g_uhttp_client_dowork_call_count == 1)
+    {
+        g_on_http_reply_recv(g_http_reply_recv_ctx, HTTP_CALLBACK_REASON_OK, content, 1, STATUS_CODE_SUCCESS, TEST_HTTP_HEADERS_HANDLE);
+    }
+    g_uhttp_client_dowork_call_count++;
+}
 
 BEGIN_TEST_SUITE(hsm_client_http_edge_ut)
 TEST_SUITE_INITIALIZE(suite_init)
 {
     (void)umock_c_init(on_umock_c_error);
+
+    REGISTER_UMOCK_ALIAS_TYPE(STRING_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(BUFFER_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_ERROR_CALLBACK, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(HTTP_HEADERS_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(HTTP_CLIENT_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_OPEN_COMPLETE_CALLBACK, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(HTTP_CLIENT_REQUEST_TYPE, int);
+    REGISTER_UMOCK_ALIAS_TYPE(ON_HTTP_REQUEST_CALLBACK, void*);
+
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_close, my_uhttp_client_close);
+
+
+    REGISTER_GLOBAL_MOCK_RETURN(environment_get_variable, "");
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(environment_get_variable, NULL);
+
+    REGISTER_GLOBAL_MOCK_HOOK(gballoc_malloc, my_gballoc_malloc);
+    REGISTER_GLOBAL_MOCK_HOOK(gballoc_free, my_gballoc_free);
+    REGISTER_GLOBAL_MOCK_HOOK(gballoc_free, my_gballoc_free);
+
+    REGISTER_GLOBAL_MOCK_HOOK(mallocAndStrcpy_s, test_mallocAndStrcpy_s);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(mallocAndStrcpy_s, 1);
+
+    REGISTER_GLOBAL_MOCK_RETURN(json_parse_string, TEST_JSON_VALUE);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_parse_string, NULL);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_object_dotget_string, TEST_CONST_CHAR_PTR);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_object_dotget_string, NULL);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_value_init_object, TEST_JSON_VALUE);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_value_init_object, NULL);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_value_get_object, TEST_JSON_OBJECT);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_value_get_object, NULL);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_object_set_string, TEST_JSON_STATUS);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_object_set_string, -1);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_serialize_to_string, TEST_CHAR_PTR);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_serialize_to_string, NULL);
+    
+    REGISTER_GLOBAL_MOCK_RETURN(json_object_clear, JSONSuccess);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(json_object_clear, JSONFailure);
+
+    REGISTER_GLOBAL_MOCK_RETURN(URL_EncodeString, TEST_STRING_HANDLE1);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(URL_EncodeString, NULL);
+
+    REGISTER_GLOBAL_MOCK_RETURN(Base64_Encode_Bytes, TEST_STRING_HANDLE2);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(Base64_Encode_Bytes, NULL);
+
+    REGISTER_GLOBAL_MOCK_RETURN(STRING_c_str, TEST_STRING_1);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(STRING_c_str, NULL);
+
+    REGISTER_GLOBAL_MOCK_RETURN(BUFFER_create, TEST_BUFFER_HANDLE);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(BUFFER_create, NULL);
+
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_create, my_uhttp_client_create);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_create, NULL);
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_destroy, my_uhttp_client_destroy);
+
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_open, my_uhttp_client_open);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_open, HTTP_CALLBACK_REASON_OPEN_FAILED);
+
+    REGISTER_GLOBAL_MOCK_RETURN(HTTPHeaders_Alloc, TEST_HTTP_HEADERS_HANDLE);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(HTTPHeaders_Alloc, NULL);
+
+    REGISTER_GLOBAL_MOCK_RETURN(HTTPHeaders_AddHeaderNameValuePair, HTTP_HEADERS_OK);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(HTTPHeaders_AddHeaderNameValuePair, HTTP_HEADERS_ERROR);
+
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_execute_request, my_uhttp_client_execute_request);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_execute_request, HTTP_CLIENT_ERROR);
+
+    REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_dowork, my_uhttp_client_dowork);
+
+    REGISTER_GLOBAL_MOCK_RETURN(socketio_get_interface_description, TEST_SOCKETIO_INTERFACE_DESCRIPTION);
+
+    REGISTER_GLOBAL_MOCK_RETURN(get_time, TEST_TIME_T);
+
+    REGISTER_GLOBAL_MOCK_RETURN(BUFFER_u_char, TEST_BUFFER_1);
 }
 
 TEST_SUITE_CLEANUP(suite_cleanup)
@@ -131,670 +340,216 @@ static int should_skip_index(size_t current_index, const size_t skip_array[], si
     return result;
 }
 
-#if 0
-TEST_FUNCTION(hsm_client_http_edge_create_succeed)
+static const char* TEST_ENV_EDGEVERSION = "Test-EdgeVersion";
+static const char* TEST_ENV_EDGEMODULEID = "Test-ModuleId";
+static const char* TEST_ENV_EDGEURI = "http://127.0.0.1:8080";
+static const char* TEST_ENV_EDGEURI_BAD_PROTOCOL = "badprotocol://127.0.0.1:8080";
+static const char* TEST_ENV_EDGEURI_NO_PORT = "http://127.0.0.1";
+static const char* TEST_ENV_EDGEURI_NO_ADDRESS = "http://:8080";
+
+
+static void setup_hsm_client_http_edge_create_mock(const char* edge_uri_env, bool valid_edge_uri)
+{
+    STRICT_EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_EDGEVERSION);
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_EDGEMODULEID);
+    STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(edge_uri_env);
+
+    if (valid_edge_uri == true)
+    {
+        STRICT_EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+        STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    }
+    else
+    {
+        STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    }
+}
+
+static void hsm_client_http_edge_create_Impl(const char* edge_uri_env, bool valid_edge_uri)
 {
     //arrange
-    // setup_hsm_client_tpm_create_mock();
+    setup_hsm_client_http_edge_create_mock(edge_uri_env, valid_edge_uri);
 
     //act
     HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
 
     //assert
-    ASSERT_IS_NOT_NULL(sec_handle);
+    if (valid_edge_uri == true)
+    {
+        ASSERT_IS_NOT_NULL(sec_handle);
+    }
+    else
+    {
+        ASSERT_IS_NULL(sec_handle);
+    }        
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     //cleanup
     hsm_client_http_edge_destroy(sec_handle);
 }
 
-/* Tests_SRS_SECURE_DEVICE_TPM_07_001: [ If any failure is encountered hsm_client_tpm_create shall return NULL ] */
-TEST_FUNCTION(hsm_client_tpm_create_fail)
+TEST_FUNCTION(hsm_client_http_edge_create_succeed)
 {
-    //arrange
-    setup_hsm_client_tpm_create_mock();
-
-    int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
-
-    umock_c_negative_tests_snapshot();
-
-    size_t calls_cannot_fail[] = { 3, 8 };
-
-    //act
-    size_t count = umock_c_negative_tests_call_count();
-    for (size_t index = 0; index < count; index++)
-    {
-        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail) / sizeof(calls_cannot_fail[0])) != 0)
-        {
-            continue;
-        }
-
-        umock_c_negative_tests_reset();
-        umock_c_negative_tests_fail_call(index);
-
-        char tmp_msg[64];
-        sprintf(tmp_msg, "secure_device_riot_create failure in test %zu/%zu", index, count);
-
-        //act
-        HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-
-        //assert
-        ASSERT_IS_NULL_WITH_MSG(sec_handle, tmp_msg);
-    }
-
-    //cleanup
-    umock_c_negative_tests_deinit();
+    hsm_client_http_edge_create_Impl(TEST_ENV_EDGEURI, true);
 }
 
-/* Tests_SRS_SECURE_DEVICE_TPM_07_004: [ hsm_client_tpm_destroy shall free the SEC_DEVICE_INFO instance. ] */
-/* Tests_SRS_SECURE_DEVICE_TPM_07_006: [ hsm_client_tpm_destroy shall free all resources allocated in this module. ]*/
-TEST_FUNCTION(hsm_client_tpm_destroy_succeed)
+TEST_FUNCTION(hsm_client_http_edge_create_fail_bad_protocol)
 {
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
+    hsm_client_http_edge_create_Impl(TEST_ENV_EDGEURI_BAD_PROTOCOL, false);
+}
+
+TEST_FUNCTION(hsm_client_http_edge_create_fail_no_port_in_string)
+{
+    hsm_client_http_edge_create_Impl(TEST_ENV_EDGEURI_NO_PORT, false);
+}
+
+TEST_FUNCTION(hsm_client_http_edge_create_fail_no_address_in_string)
+{
+    hsm_client_http_edge_create_Impl(TEST_ENV_EDGEURI_NO_ADDRESS, false);
+}
+
+TEST_FUNCTION(hsm_client_http_edge_destroy_success)
+{
+    // setup
+    setup_hsm_client_http_edge_create_mock(TEST_ENV_EDGEURI, true);
+
+    HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
+
+    ASSERT_IS_NOT_NULL(sec_handle);
+
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(Deinit_TPM_Codec(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
 
+    
+    // test
+    hsm_client_http_edge_destroy(sec_handle);
+
+    // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+}
+
+
+
+TEST_FUNCTION(hsm_client_http_edge_destroy_null_ptr)
+{
+    hsm_client_http_edge_destroy(NULL);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+}
+
+TEST_FUNCTION(hsm_client_http_edge_interface_succeed)
+{
     //act
-    hsm_client_tpm_destroy(sec_handle);
+    const HSM_CLIENT_HTTP_EDGE_INTERFACE* http_edge_iface = hsm_client_http_edge_interface();
 
     //assert
+    ASSERT_IS_NOT_NULL(http_edge_iface);
+    ASSERT_IS_NOT_NULL(http_edge_iface->hsm_client_http_edge_create);
+    ASSERT_IS_NOT_NULL(http_edge_iface->hsm_client_http_edge_destroy);
+    ASSERT_IS_NOT_NULL(http_edge_iface->hsm_client_sign_with_identity);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
 }
 
-/* Tests_SRS_SECURE_DEVICE_TPM_07_005: [ if handle is NULL, hsm_client_tpm_destroy shall do nothing. ] */
-TEST_FUNCTION(hsm_client_tpm_destroy_handle_NULL_succeed)
+
+static void set_expected_calls_construct_json_signing_blob()
 {
-    //arrange
-    umock_c_reset_all_calls();
-
-    //act
-    hsm_client_tpm_destroy(NULL);
-
-    //assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_007: [ if handle or key are NULL, or key_len is 0 hsm_client_tpm_import_key shall return a non-zero value ] */
-TEST_FUNCTION(hsm_client_tpm_import_key_handle_NULL_fail)
-{
-    //arrange
-
-    //act
-    int import_res = hsm_client_tpm_import_key(NULL, TEST_IMPORT_KEY, TEST_KEY_SIZE);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, import_res);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_007: [ if handle or key are NULL, or key_len is 0 hsm_client_tpm_import_key shall return a non-zero value ] */
-TEST_FUNCTION(hsm_client_tpm_import_key_key_NULL_fail)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    int import_res = hsm_client_tpm_import_key(sec_handle, NULL, TEST_KEY_SIZE);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, import_res);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-TEST_FUNCTION(hsm_client_tpm_import_key_fail)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
-
-    setup_hsm_client_tpm_import_key_mock();
-
-    umock_c_negative_tests_snapshot();
-
-    size_t calls_cannot_fail[] = { 2, 3, 4, 5, 6, 7, 10, 13 };
-
-    //act
-    size_t count = umock_c_negative_tests_call_count();
-    for (size_t index = 0; index < count; index++)
-    {
-        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail) / sizeof(calls_cannot_fail[0])) != 0)
-        {
-            continue;
-        }
-
-        umock_c_negative_tests_reset();
-        umock_c_negative_tests_fail_call(index);
-
-        char tmp_msg[64];
-        sprintf(tmp_msg, "hsm_client_tpm_import_key failure in test %zu/%zu", index, count);
-
-        //act
-        int import_res = hsm_client_tpm_import_key(sec_handle, TEST_IMPORT_KEY, TEST_KEY_SIZE);
-
-        //assert
-        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, 0, import_res, tmp_msg);
-    }
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-    umock_c_negative_tests_deinit();
-}
-
-/* Tests_hsm_client_tpm_import_key shall establish a tpm session in preparation to inserting the key into the tpm. */
-/* Tests_SRS_SECURE_DEVICE_TPM_07_008: [ On success hsm_client_tpm_import_key shall return zero ] */
-TEST_FUNCTION(hsm_client_tpm_import_key_succeed)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    setup_hsm_client_tpm_import_key_mock();
-
-    //act
-    int import_res = hsm_client_tpm_import_key(sec_handle, TEST_IMPORT_KEY, TEST_KEY_SIZE);
-
-    //assert
-    ASSERT_ARE_EQUAL(int, 0, import_res);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_013: [ If handle is NULL hsm_client_tpm_get_endorsement_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_endorsement_key_handle_NULL_succeed)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //act
-    int result = hsm_client_tpm_get_endorsement_key(NULL, &key, &key_len);
-
-    //assert
-    //ASSERT_IS_NULL(key);
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_027: [ If the ek_public was not initialized hsm_client_tpm_get_endorsement_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_endorsement_key_size_0_fail)
-{
-    g_rsa_size = 0;
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    int result = hsm_client_tpm_get_endorsement_key(NULL, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_015: [ If a failure is encountered, hsm_client_tpm_get_endorsement_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_endorsement_key_fail)
-{
-    //arrange
-    unsigned char* key;
-    size_t key_len;
-
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
-
-    setup_hsm_client_tpm_get_endorsement_key_mocks();
-
-    umock_c_negative_tests_snapshot();
-
-    size_t calls_cannot_fail[] = { 0, 2, 4 };
-
-    //act
-    size_t count = umock_c_negative_tests_call_count();
-    for (size_t index = 0; index < count; index++)
-    {
-        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail) / sizeof(calls_cannot_fail[0])) != 0)
-        {
-            continue;
-        }
-
-        umock_c_negative_tests_reset();
-        umock_c_negative_tests_fail_call(index);
-
-        char tmp_msg[64];
-        sprintf(tmp_msg, "hsm_client_tpm_get_endorsement_key failure in test %zu/%zu", index, count);
-
-        int result = hsm_client_tpm_get_endorsement_key(NULL, &key, &key_len);
-
-        //assert
-        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, 0, result, tmp_msg);
-    }
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-    umock_c_negative_tests_deinit();
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_014: [ hsm_client_tpm_get_endorsement_key shall allocate and return the Endorsement Key. ] */
-TEST_FUNCTION(hsm_client_tpm_get_endorsement_key_succeed)
-{
-    //arrange
-    unsigned char* key;
-    size_t key_len;
-
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    setup_hsm_client_tpm_get_endorsement_key_mocks();
-
-    //act
-    int result = hsm_client_tpm_get_endorsement_key(sec_handle, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(key);
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_016: [ If handle is NULL, hsm_client_tpm_get_storage_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_storage_key_handle_NULL_fail)
-{
-    //arrange
-    unsigned char* key;
-    size_t key_len;
-
-    //act
-    int result = hsm_client_tpm_get_storage_key(NULL, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_017: [ If the srk_public value was not initialized, hsm_client_tpm_get_storage_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_storage_key_size_0_fail)
-{
-    unsigned char* key;
-    size_t key_len;
-    g_rsa_size = 0;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    int result = hsm_client_tpm_get_storage_key(NULL, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_019: [ If any failure is encountered, hsm_client_tpm_get_storage_key shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_get_storage_key_fail)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
-
-    setup_hsm_client_tpm_get_storage_key_mocks();
-
-    umock_c_negative_tests_snapshot();
-
-    size_t calls_cannot_fail[] = { 0, 2, 4 };
-
-    //act
-    size_t count = umock_c_negative_tests_call_count();
-    for (size_t index = 0; index < count; index++)
-    {
-        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail) / sizeof(calls_cannot_fail[0])) != 0)
-        {
-            continue;
-        }
-
-        umock_c_negative_tests_reset();
-        umock_c_negative_tests_fail_call(index);
-
-        char tmp_msg[64];
-        sprintf(tmp_msg, "hsm_client_tpm_get_storage_key failure in test %zu/%zu", index, count);
-
-        int result = hsm_client_tpm_get_storage_key(NULL, &key, &key_len);
-
-        //assert
-        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, 0, result, tmp_msg);
-    }
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-    umock_c_negative_tests_deinit();
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_018: [ hsm_client_tpm_get_storage_key shall allocate and return the Storage Root Key. ] */
-TEST_FUNCTION(hsm_client_tpm_get_storage_key_succeed)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    setup_hsm_client_tpm_get_storage_key_mocks();
-
-    //act
-    int result = hsm_client_tpm_get_storage_key(sec_handle, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(key);
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_020: [ If handle or data is NULL or data_len is 0, hsm_client_tpm_sign_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_sign_data_handle_fail)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-
-    //act
-    int result = hsm_client_tpm_sign_data(NULL, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_020: [ If handle or data is NULL or data_len is 0, hsm_client_tpm_sign_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_sign_data_data_NULL_fail)
-{
-    //arrange
-    unsigned char* key;
-    size_t key_len;
-
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    int result = hsm_client_tpm_sign_data(NULL, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_020: [ If handle or data is NULL or data_len is 0, hsm_client_tpm_sign_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_sign_data_size_0_fail)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    int result = hsm_client_tpm_sign_data(NULL, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_023: [ If an error is encountered hsm_client_tpm_sign_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_sign_data_fail)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
-
-    setup_hsm_client_tpm_sign_data_mocks();
-
-    umock_c_negative_tests_snapshot();
-
-    size_t count = umock_c_negative_tests_call_count();
-    for (size_t index = 0; index < count; index++)
-    {
-        umock_c_negative_tests_reset();
-        umock_c_negative_tests_fail_call(index);
-
-        char tmp_msg[64];
-        sprintf(tmp_msg, "hsm_client_tpm_sign_data failure in test %zu/%zu", index, count);
-
-        //act
-        int result = hsm_client_tpm_sign_data(NULL, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
-
-        //assert
-        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, 0, result, tmp_msg);
-    }
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
-    umock_c_negative_tests_deinit();
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_021: [ hsm_client_tpm_sign_data shall call into the tpm to hash the supplied data value. ] */
-/* Tests_SRS_SECURE_DEVICE_TPM_07_022: [ If hashing the data was successful, hsm_client_tpm_sign_data shall create a BUFFER_HANDLE with the supplied signed data. ] */
-TEST_FUNCTION(hsm_client_tpm_sign_data_succeed)
-{
-    unsigned char* key;
-    size_t key_len;
-
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    setup_hsm_client_tpm_sign_data_mocks();
-
-    //act
-    int result = hsm_client_tpm_sign_data(sec_handle, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
-
-    //assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(key);
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-#if 0
-/* Tests_SRS_SECURE_DEVICE_TPM_07_025: [ If handle or data is NULL or data_len is 0, hsm_client_tpm_decrypt_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_decrypt_data_handle_NULL_fail)
-{
-    //arrange
-
-    //act
-    BUFFER_HANDLE decrypt_value = hsm_client_tpm_decrypt_data(NULL, TEST_BUFFER, TEST_BUFFER_SIZE);
-
-    //assert
-    ASSERT_IS_NULL(decrypt_value);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_029: [ If an error is encountered secure_dev_tpm_decrypt_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_decrypt_data_data_NULL_fail)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    BUFFER_HANDLE decrypt_value = hsm_client_tpm_decrypt_data(sec_handle, NULL, TEST_BUFFER_SIZE);
-
-    //assert
-    ASSERT_IS_NULL(decrypt_value);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(decrypt_value);
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_025: [ If handle or data is NULL or data_len is 0, hsm_client_tpm_decrypt_data shall return NULL. ] */
-TEST_FUNCTION(hsm_client_tpm_decrypt_data_data_len_0_fail)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    BUFFER_HANDLE decrypt_value = hsm_client_tpm_decrypt_data(sec_handle, TEST_BUFFER, 0);
-
-    //assert
-    ASSERT_IS_NULL(decrypt_value);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(decrypt_value);
-    hsm_client_tpm_destroy(sec_handle);
-}
-
-/* Tests_SRS_SECURE_DEVICE_TPM_07_024: [ hsm_client_tpm_decrypt_data shall call into the tpm to decrypt the supplied data value. ] */
-TEST_FUNCTION(hsm_client_tpm_decrypt_data_succeed)
-{
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    TPM_SE tmp_se = 0;
-    TPMA_SESSION tmp_session = { 0 };
-
-    STRICT_EXPECTED_CALL(TSS_StartAuthSession(IGNORED_PTR_ARG, tmp_se, IGNORED_NUM_ARG, tmp_session, IGNORED_PTR_ARG))
-        .IgnoreArgument_sessAttrs()
-        .IgnoreArgument_sessionType();
-    STRICT_EXPECTED_CALL(TSS_PolicySecret(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG)); // 4
-    STRICT_EXPECTED_CALL(TSS_GetTpmProperty(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(TPM2B_ID_OBJECT_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(TPM2B_ENCRYPTED_SECRET_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(TPM2B_PRIVATE_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(TPM2B_ENCRYPTED_SECRET_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(TPM2B_PUBLIC_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 1));
-    STRICT_EXPECTED_CALL(UINT16_Unmarshal(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(TPM2_ActivateCredential(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(URL_EncodeString(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_concat(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(Base64_Encode_Bytes(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(json_value_init_object());
+    STRICT_EXPECTED_CALL(json_value_get_object(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_object_set_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_object_set_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_object_set_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_serialize_to_string(TEST_JSON_VALUE));
     STRICT_EXPECTED_CALL(BUFFER_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-
-    //act
-    BUFFER_HANDLE decrypt_value = hsm_client_tpm_decrypt_data(sec_handle, TEST_BUFFER, TEST_BUFFER_SIZE);
-
-    //assert
-    ASSERT_IS_NOT_NULL(decrypt_value);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    my_gballoc_free(decrypt_value);
-    hsm_client_tpm_destroy(sec_handle);
+    STRICT_EXPECTED_CALL(json_free_serialized_string(TEST_CHAR_PTR));
+    STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
 }
-#endif
 
-/* Tests_SRS_SECURE_DEVICE_TPM_07_026: [ hsm_client_tpm_interface shall return the SEC_TPM_INTERFACE structure. ] */
-TEST_FUNCTION(hsm_client_tpm_interface_succeed)
+static void set_expected_calls_send_and_poll_http_signing_request()
 {
-    //arrange
-    HSM_CLIENT_HANDLE sec_handle = hsm_client_tpm_create();
-    umock_c_reset_all_calls();
-
-    //act
-    const HSM_CLIENT_TPM_INTERFACE* tpm_iface = hsm_client_tpm_interface();
-
-    //assert
-    ASSERT_IS_NOT_NULL(tpm_iface);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_tpm_create);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_tpm_destroy);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_get_ek);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_get_srk);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_import_key);
-    ASSERT_IS_NOT_NULL(tpm_iface->hsm_client_sign_data);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
-
-    //cleanup
-    hsm_client_tpm_destroy(sec_handle);
+    STRICT_EXPECTED_CALL(BUFFER_u_char(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_execute_request(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG));
 }
 
-#endif // 0
+static void set_expected_calls_send_http_signing_request(bool expect_success)
+{
+    STRICT_EXPECTED_CALL(socketio_get_interface_description());
+    STRICT_EXPECTED_CALL(uhttp_client_create(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_open(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(HTTPHeaders_Alloc());
+    STRICT_EXPECTED_CALL(HTTPHeaders_AddHeaderNameValuePair(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
+    set_expected_calls_send_and_poll_http_signing_request();
+    STRICT_EXPECTED_CALL(HTTPHeaders_Free(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_destroy(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
+
+    if (expect_success == false)
+    {
+        STRICT_EXPECTED_CALL(BUFFER_delete(IGNORED_NUM_ARG));
+    }
+}
+
+static void set_expected_calls_parse_json_signing_response()
+{
+    STRICT_EXPECTED_CALL(BUFFER_u_char(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(json_parse_string(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(json_value_get_object(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_object_dotget_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
+}
+
+static const unsigned char* TEST_SIGNING_DATA = (const unsigned char* )"Test/Data/To/Sign";
+static const int TEST_SIGNING_DATA_LENGTH = sizeof(TEST_SIGNING_DATA) - 1;
+
+static void set_expected_calls_hsm_client_http_edge_sign_data()
+{
+    set_expected_calls_construct_json_signing_blob();
+    set_expected_calls_send_http_signing_request(true);
+    set_expected_calls_parse_json_signing_response();
+    STRICT_EXPECTED_CALL(BUFFER_delete(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(BUFFER_delete(IGNORED_NUM_ARG));
+}
 
 TEST_FUNCTION(hsm_client_http_edge_sign_data_succeed)
 {
-    unsigned char* key;
-    size_t key_len;
+    setup_hsm_client_http_edge_create_mock(TEST_ENV_EDGEURI, true);
 
-    //arrange
     HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
-    umock_c_reset_all_calls();
+    unsigned char* signed_value = NULL;
+    size_t signed_len = 1234; // This is part of the length hack deal.
 
-    setup_hsm_client_tpm_sign_data_mocks();
+    ASSERT_IS_NOT_NULL(sec_handle);
 
-    //act
-    int result = hsm_client_http_edge_sign_data(sec_handle, TEST_BUFFER, TEST_BUFFER_SIZE, &key, &key_len);
+    set_expected_calls_hsm_client_http_edge_sign_data();
 
-    //assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    int result = hsm_client_http_edge_sign_data(sec_handle, TEST_SIGNING_DATA, TEST_SIGNING_DATA_LENGTH, &signed_value, &signed_len);
+    ASSERT_ARE_EQUAL(int, result, 0);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
-    //cleanup
-    my_gballoc_free(key);
-    hsm_client_tpm_destroy(sec_handle);
+    hsm_client_http_edge_destroy(sec_handle);    
 }
 
 
 
 END_TEST_SUITE(hsm_client_http_edge_ut)
+

@@ -21,8 +21,9 @@
 static const char* HTTP_HEADER_KEY_CONTENT_TYPE = "Content-Type";
 static const char* HTTP_HEADER_VAL_CONTENT_TYPE = "application/json; charset=utf-8";
 static const char* HSM_EDGE_SIGN_JSON_KEY_ID = "keyId";
+static const char* HSM_EDGE_SIGN_JSON_KEY_ID_VALUE = "primary";
 static const char* HSM_EDGE_SIGN_JSON_ALGORITHM = "algo";
-static const char* HSM_EDGE_SIGN_DEFAULT_ALGORITHM = "HMACSHA256";
+static const char* HSM_EDGE_SIGN_JSON_ALGORITHM_VALUE = "HMACSHA256";
 static const char* HSM_EDGE_SIGN_JSON_DATA = "data";
 static const char* HSM_EDGE_SIGN_JSON_DIGEST = "digest";
 
@@ -191,27 +192,27 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
     char* serialized_string = NULL;
-	STRING_HANDLE data_url_encoded = NULL;
-	STRING_HANDLE data_base64_encoded = NULL;
+    STRING_HANDLE data_url_encoded = NULL;
+    STRING_HANDLE data_base64_encoded = NULL;
 
-	char expire_token[64] = { 0 };
-	sprintf(expire_token, "\n%zu", expiry_time);
+    char expire_token[64] = { 0 };
+    sprintf(expire_token, "\n%zu", expiry_time);
 
-	if ((data_url_encoded = URL_EncodeString((const char*)data)) == NULL)
-	{
-		LogError("url encoding of string %s failed", data);
-		result = NULL;
-	}
-	else if ((STRING_concat(data_url_encoded, expire_token)) != 0)
-	{
-		LogError("STRING_concat failed");
-		result = NULL;
-	}
-	else if ((data_base64_encoded = Base64_Encode_Bytes(STRING_c_str(data_url_encoded), strlen(STRING_c_str(data_url_encoded)))) == NULL)
-	{
-		LogError("base64 encoding of string %s failed", STRING_c_str(data_url_encoded));
-		result = NULL;
-	}
+    if ((data_url_encoded = URL_EncodeString((const char*)data)) == NULL)
+    {
+        LogError("url encoding of string %s failed", data);
+        result = NULL;
+    }
+    else if ((STRING_concat(data_url_encoded, expire_token)) != 0)
+    {
+        LogError("STRING_concat failed");
+        result = NULL;
+    }
+    else if ((data_base64_encoded = Base64_Encode_Bytes((const unsigned char*)STRING_c_str(data_url_encoded), strlen(STRING_c_str(data_url_encoded)))) == NULL)
+    {
+        LogError("base64 encoding of string %s failed", STRING_c_str(data_url_encoded));
+        result = NULL;
+    }
     else if ((root_value = json_value_init_object()) == NULL)
     {
         LogError("json_value_init_object failed");
@@ -222,12 +223,12 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size
         LogError("json_value_get_object failed");
         result = NULL;
     }
-    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_KEY_ID, "primary")) != JSONSuccess)
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_KEY_ID, HSM_EDGE_SIGN_JSON_KEY_ID_VALUE)) != JSONSuccess)
     {
         LogError("json_object_set_string failed for keyId");
         result = NULL;
     }
-    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_ALGORITHM, HSM_EDGE_SIGN_DEFAULT_ALGORITHM)) != JSONSuccess)
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_ALGORITHM, HSM_EDGE_SIGN_JSON_ALGORITHM_VALUE)) != JSONSuccess)
     {
         LogError("json_object_set_string failed for algorithm");
         result = NULL;
@@ -248,18 +249,12 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size
         result = NULL;
     }
 
-	json_free_serialized_string(serialized_string);
+    json_free_serialized_string(serialized_string);
     json_object_clear(root_object);
-	STRING_delete(data_base64_encoded);
-	STRING_delete(data_url_encoded);
+    STRING_delete(data_base64_encoded);
+    STRING_delete(data_url_encoded);
     return result;
 }
-
-typedef struct HSM_HTTP_EDGE_SIGNING_CONTEXT_TAG
-{
-    bool continue_running;
-    BUFFER_HANDLE http_response;
-} HSM_HTTP_EDGE_SIGNING_CONTEXT;
 
 static void on_edge_hsm_http_error(void* callback_ctx, HTTP_CALLBACK_REASON error_result)
 {
@@ -338,7 +333,7 @@ static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HT
 
     if ((http_client_result = uhttp_client_execute_request(http_handle, HTTP_CLIENT_REQUEST_POST, uri_path, http_headers_handle, json_to_send_str, strlen((const char*)json_to_send_str), on_edge_hsm_http_recv, sign_context)) != HTTP_CLIENT_OK)
     {
-		LogError("uhttp_client_execute_request failed, result=%d", http_client_result);
+        LogError("uhttp_client_execute_request failed, result=%d", http_client_result);
     }
     else
     {
