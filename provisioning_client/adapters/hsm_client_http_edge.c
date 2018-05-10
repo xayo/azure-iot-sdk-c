@@ -352,7 +352,7 @@ static int send_and_poll_http_signing_request(HTTP_CLIENT_HANDLE http_handle, HT
         do
         {
             uhttp_client_dowork(http_handle);
-            timed_out = difftime(start_request_time, get_time(NULL)) > HSM_HTTP_EDGE_MAXIMUM_REQUEST_TIME;
+            timed_out = difftime(get_time(NULL), start_request_time) > HSM_HTTP_EDGE_MAXIMUM_REQUEST_TIME;
         } while ((sign_context->continue_running == true) && (timed_out == false));
     }
 
