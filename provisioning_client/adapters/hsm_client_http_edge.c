@@ -186,24 +186,35 @@ const HSM_CLIENT_HTTP_EDGE_INTERFACE* hsm_client_http_edge_interface()
     return &http_edge_interface;
 }
 
-static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size_t expiry_time)
+static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data)
 {
     JSON_Value* root_value = NULL;
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
     char* serialized_string = NULL;
+    STRING_HANDLE data_string = NULL;
     STRING_HANDLE data_url_encoded = NULL;
     STRING_HANDLE data_base64_encoded = NULL;
-
-    char expire_token[64] = { 0 };
-    sprintf(expire_token, "\n%zu", expiry_time);
-
-    if ((data_url_encoded = URL_EncodeString((const char*)data)) == NULL)
+    
+    // The caller passes us the data in the form "<tokenScope>\n<expire_time>".  We need to 
+    // URL encode the tokenScope for HTTP transmission, but not the \n, so build up string appropriately.
+    const char* carriage_return_in_data = strchr((const char*)data, '\n');
+    if ((carriage_return_in_data == NULL) || (*(carriage_return_in_data+1) == 0))
+    {
+        LogError("No carriage return in data", data);
+        result = NULL;
+    }
+    else if ((data_string = STRING_construct_n((const char*)data, carriage_return_in_data - (const char*)data)) == NULL)
+    {
+        LogError("creating data string failed");
+        result = NULL;
+    }    
+    else if ((data_url_encoded = URL_Encode(data_string)) == NULL)
     {
         LogError("url encoding of string %s failed", data);
         result = NULL;
     }
-    else if ((STRING_concat(data_url_encoded, expire_token)) != 0)
+    else if ((STRING_concat(data_url_encoded, carriage_return_in_data)) != 0)
     {
         LogError("STRING_concat failed");
         result = NULL;
@@ -253,6 +264,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size
     json_object_clear(root_object);
     STRING_delete(data_base64_encoded);
     STRING_delete(data_url_encoded);
+    STRING_delete(data_string);
     return result;
 }
 
@@ -473,7 +485,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        if ((json_to_send = construct_json_signing_blob(data, *signed_len)) == NULL) //*signed_len is a hack, using it to get in the expiry time till we can rethink interface
+        if ((json_to_send = construct_json_signing_blob(data)) == NULL)
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;

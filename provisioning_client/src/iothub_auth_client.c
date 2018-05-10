@@ -33,6 +33,7 @@ typedef struct IOTHUB_SECURITY_INFO_TAG
     char* sas_token;
     char* x509_certificate;
     char* x509_alias_key;
+    bool base64_encode_signature;
 } IOTHUB_SECURITY_INFO;
 
 #define HMAC_LENGTH                 32
@@ -51,6 +52,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         if (iothub_security_type() == IOTHUB_SECURITY_TYPE_SAS)
         {
             result->cred_type = AUTH_TYPE_SAS;
+            result->base64_encode_signature = true;
             const HSM_CLIENT_TPM_INTERFACE* tpm_interface = hsm_client_tpm_interface();
             if (((result->hsm_client_create = tpm_interface->hsm_client_tpm_create) == NULL) ||
                 ((result->hsm_client_destroy = tpm_interface->hsm_client_tpm_destroy) == NULL) ||
@@ -66,6 +68,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         else if (iothub_security_type() == IOTHUB_SECURITY_TYPE_X509)
         {
             result->cred_type = AUTH_TYPE_X509;
+            result->base64_encode_signature = true;
             const HSM_CLIENT_X509_INTERFACE* x509_interface = hsm_client_x509_interface();
             if (((result->hsm_client_create = x509_interface->hsm_client_x509_create) == NULL) ||
                 ((result->hsm_client_destroy = x509_interface->hsm_client_x509_destroy) == NULL) ||
@@ -83,6 +86,8 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         else if (iothub_security_type() == IOTHUB_SECURITY_TYPE_HTTP_EDGE)
         {
             result->cred_type = AUTH_TYPE_SAS;
+            // Because HTTP_edge operates over HTTP, the server has already base64 encoded signature its returning to us.
+            result->base64_encode_signature = false;
             const HSM_CLIENT_HTTP_EDGE_INTERFACE* http_edge_interface = hsm_client_http_edge_interface();
             if (((result->hsm_client_create = http_edge_interface->hsm_client_http_edge_create) == NULL) ||
                 ((result->hsm_client_destroy = http_edge_interface->hsm_client_http_edge_destroy) == NULL) ||
@@ -192,10 +197,7 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                     unsigned char* data_value;
                     size_t data_len;
 
-					data_len = dev_auth_cred->sas_info.expiry_seconds; // total hack to pass in data I need
-
-                    // size_t total_len = sprintf(payload, "%s\n%s", dev_auth_cred->sas_info.token_scope, expire_token);
-					size_t total_len = sprintf(payload, "%s", dev_auth_cred->sas_info.token_scope);
+                    size_t total_len = sprintf(payload, "%s\n%s", dev_auth_cred->sas_info.token_scope, expire_token);
                     if (total_len <= 0)
                     {
                         result = NULL;
@@ -205,19 +207,27 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                     else if (handle->hsm_client_sign_data(handle->hsm_client_handle, (const unsigned char*)payload, strlen(payload), &data_value, &data_len) == 0)
                     {
                         STRING_HANDLE urlEncodedSignature;
-                        STRING_HANDLE base64Signature;
+                        STRING_HANDLE signature;
                         STRING_HANDLE sas_token_handle;
-                        // if ((base64Signature = Base64_Encode_Bytes(data_value, data_len)) == NULL)
-						if ((base64Signature = STRING_construct(data_value)) == NULL)
+                        if (handle->base64_encode_signature == true)
+                        {
+                            signature = Base64_Encode_Bytes(data_value, data_len);
+                        }
+                        else
+                        {
+                            signature = STRING_construct((const char*)data_value);
+                        }                            
+                        
+                        if (signature == NULL)
                         {
                             result = NULL;
                             LogError("Failure constructing base64 encoding.");
                         }
-                        else if ((urlEncodedSignature = URL_Encode(base64Signature)) == NULL)
+                        else if ((urlEncodedSignature = URL_Encode(signature)) == NULL)
                         {
                             result = NULL;
                             LogError("Failure constructing url Signature.");
-                            STRING_delete(base64Signature);
+                            STRING_delete(signature);
                         }
                         else
                         {
@@ -248,7 +258,7 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                                 }
                                 STRING_delete(sas_token_handle);
                             }
-                            STRING_delete(base64Signature);
+                            STRING_delete(signature);
                             STRING_delete(urlEncodedSignature);
                         }
                         free(data_value);
