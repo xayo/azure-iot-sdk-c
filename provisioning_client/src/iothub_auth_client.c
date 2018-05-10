@@ -34,6 +34,7 @@ typedef struct IOTHUB_SECURITY_INFO_TAG
     char* x509_certificate;
     char* x509_alias_key;
     bool base64_encode_signature;
+	bool urlencode_token_scope;
 } IOTHUB_SECURITY_INFO;
 
 #define HMAC_LENGTH                 32
@@ -53,6 +54,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         {
             result->cred_type = AUTH_TYPE_SAS;
             result->base64_encode_signature = true;
+			result->urlencode_token_scope = false;
             const HSM_CLIENT_TPM_INTERFACE* tpm_interface = hsm_client_tpm_interface();
             if (((result->hsm_client_create = tpm_interface->hsm_client_tpm_create) == NULL) ||
                 ((result->hsm_client_destroy = tpm_interface->hsm_client_tpm_destroy) == NULL) ||
@@ -69,6 +71,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
         {
             result->cred_type = AUTH_TYPE_X509;
             result->base64_encode_signature = true;
+			result->urlencode_token_scope = false;
             const HSM_CLIENT_X509_INTERFACE* x509_interface = hsm_client_x509_interface();
             if (((result->hsm_client_create = x509_interface->hsm_client_x509_create) == NULL) ||
                 ((result->hsm_client_destroy = x509_interface->hsm_client_x509_destroy) == NULL) ||
@@ -88,6 +91,7 @@ IOTHUB_SECURITY_HANDLE iothub_device_auth_create()
             result->cred_type = AUTH_TYPE_SAS;
             // Because HTTP_edge operates over HTTP, the server has already base64 encoded signature its returning to us.
             result->base64_encode_signature = false;
+			result->urlencode_token_scope = true;
             const HSM_CLIENT_HTTP_EDGE_INTERFACE* http_edge_interface = hsm_client_http_edge_interface();
             if (((result->hsm_client_create = http_edge_interface->hsm_client_http_edge_create) == NULL) ||
                 ((result->hsm_client_destroy = http_edge_interface->hsm_client_http_edge_destroy) == NULL) ||
@@ -229,10 +233,29 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                             LogError("Failure constructing url Signature.");
                             STRING_delete(signature);
                         }
-                        else
-                        {
-							STRING_HANDLE token_scope = URL_EncodeString(dev_auth_cred->sas_info.token_scope);
-                            sas_token_handle = STRING_construct_sprintf("SharedAccessSignature sr=%s&sig=%s&se=%s", STRING_c_str(token_scope), STRING_c_str(urlEncodedSignature), expire_token);
+						else
+						{
+							STRING_HANDLE sas_token_handle;
+
+							if (handle->urlencode_token_scope == true)
+							{
+								STRING_HANDLE url_encoded = URL_EncodeString(dev_auth_cred->sas_info.token_scope);
+								if (url_encoded == NULL)
+								{
+									LogError("failed to url string %s", dev_auth_cred->sas_info.token_scope);
+								}
+								else
+								{
+									sas_token_handle = STRING_construct_sprintf("SharedAccessSignature sr=%s&sig=%s&se=%s", STRING_c_str(url_encoded), STRING_c_str(urlEncodedSignature), expire_token);
+								}
+								
+								STRING_delete(url_encoded);
+							}
+							else
+							{
+								sas_token_handle = STRING_construct_sprintf("SharedAccessSignature sr=%s&sig=%s&se=%s&skn=", dev_auth_cred->sas_info.token_scope, STRING_c_str(urlEncodedSignature), expire_token);
+							}
+
                             if (sas_token_handle == NULL)
                             {
                                 result = NULL;
