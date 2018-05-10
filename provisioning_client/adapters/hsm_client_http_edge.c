@@ -11,7 +11,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/socketio.h"
-// #include "azure_c_shared_utility/httpapiex.h"
+#include "azure_c_shared_utility/base64.h"
 #include "azure_uhttp_c/uhttp.h"
 
 #include "azure_c_shared_utility/env_variable.h"
@@ -185,14 +185,34 @@ const HSM_CLIENT_HTTP_EDGE_INTERFACE* hsm_client_http_edge_interface()
     return &http_edge_interface;
 }
 
-static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data)
+static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data, size_t expiry_time)
 {
     JSON_Value* root_value = NULL;
     JSON_Object* root_object = NULL;
     BUFFER_HANDLE result = NULL;
     char* serialized_string = NULL;
+	STRING_HANDLE data_url_encoded = NULL;
+	STRING_HANDLE data_base64_encoded = NULL;
 
-    if ((root_value = json_value_init_object()) == NULL)
+	char expire_token[64] = { 0 };
+	sprintf(expire_token, "\n%zu", expiry_time);
+
+	if ((data_url_encoded = URL_EncodeString((const char*)data)) == NULL)
+	{
+		LogError("url encoding of string %s failed", data);
+		result = NULL;
+	}
+	else if ((STRING_concat(data_url_encoded, expire_token)) != 0)
+	{
+		LogError("STRING_concat failed");
+		result = NULL;
+	}
+	else if ((data_base64_encoded = Base64_Encode_Bytes(STRING_c_str(data_url_encoded), strlen(STRING_c_str(data_url_encoded)))) == NULL)
+	{
+		LogError("base64 encoding of string %s failed", STRING_c_str(data_url_encoded));
+		result = NULL;
+	}
+    else if ((root_value = json_value_init_object()) == NULL)
     {
         LogError("json_value_init_object failed");
         result = NULL;
@@ -212,7 +232,7 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data)
         LogError("json_object_set_string failed for algorithm");
         result = NULL;
     }
-    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_DATA, (const char*)data)) != JSONSuccess)
+    else if ((json_object_set_string(root_object, HSM_EDGE_SIGN_JSON_DATA, STRING_c_str(data_base64_encoded))) != JSONSuccess)
     {
         LogError("json_object_set_string failed for data");
         result = NULL;
@@ -228,8 +248,10 @@ static BUFFER_HANDLE construct_json_signing_blob(const unsigned char* data)
         result = NULL;
     }
 
-    json_free_serialized_string(serialized_string);
+	json_free_serialized_string(serialized_string);
     json_object_clear(root_object);
+	STRING_delete(data_base64_encoded);
+	STRING_delete(data_url_encoded);
     return result;
 }
 
@@ -446,7 +468,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     int result;
     BUFFER_HANDLE json_to_send = NULL;
     BUFFER_HANDLE http_response = NULL;
-    
+   
     if (handle == NULL || data == NULL || data_len == 0 || signed_value == NULL || signed_len == NULL)
     {
         LogError("Invalid handle value specified handle: %p, data: %p, data_len: %zu, signed_value: %p, signed_len: %p", handle, data, data_len, signed_value, signed_len);
@@ -456,7 +478,7 @@ int hsm_client_http_edge_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     {
         HSM_CLIENT_HTTP_EDGE* hsm_client_http_edge = (HSM_CLIENT_HTTP_EDGE*)handle;
 
-        if ((json_to_send = construct_json_signing_blob(data)) == NULL)
+        if ((json_to_send = construct_json_signing_blob(data, *signed_len)) == NULL) //*signed_len is a hack, using it to get in the expiry time till we can rethink interface
         {
             LogError("construct_json_signing_blob failed");
             result = __FAILURE__;

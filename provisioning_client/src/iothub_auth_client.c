@@ -192,7 +192,10 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                     unsigned char* data_value;
                     size_t data_len;
 
-                    size_t total_len = sprintf(payload, "%s\n%s", dev_auth_cred->sas_info.token_scope, expire_token);
+					data_len = dev_auth_cred->sas_info.expiry_seconds; // total hack to pass in data I need
+
+                    // size_t total_len = sprintf(payload, "%s\n%s", dev_auth_cred->sas_info.token_scope, expire_token);
+					size_t total_len = sprintf(payload, "%s", dev_auth_cred->sas_info.token_scope);
                     if (total_len <= 0)
                     {
                         result = NULL;
@@ -204,7 +207,8 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                         STRING_HANDLE urlEncodedSignature;
                         STRING_HANDLE base64Signature;
                         STRING_HANDLE sas_token_handle;
-                        if ((base64Signature = Base64_Encode_Bytes(data_value, data_len)) == NULL)
+                        // if ((base64Signature = Base64_Encode_Bytes(data_value, data_len)) == NULL)
+						if ((base64Signature = STRING_construct(data_value)) == NULL)
                         {
                             result = NULL;
                             LogError("Failure constructing base64 encoding.");
@@ -217,7 +221,8 @@ CREDENTIAL_RESULT* iothub_device_auth_generate_credentials(IOTHUB_SECURITY_HANDL
                         }
                         else
                         {
-                            sas_token_handle = STRING_construct_sprintf("SharedAccessSignature sr=%s&sig=%s&se=%s&skn=", dev_auth_cred->sas_info.token_scope, STRING_c_str(urlEncodedSignature), expire_token);
+							STRING_HANDLE token_scope = URL_EncodeString(dev_auth_cred->sas_info.token_scope);
+                            sas_token_handle = STRING_construct_sprintf("SharedAccessSignature sr=%s&sig=%s&se=%s", STRING_c_str(token_scope), STRING_c_str(urlEncodedSignature), expire_token);
                             if (sas_token_handle == NULL)
                             {
                                 result = NULL;
