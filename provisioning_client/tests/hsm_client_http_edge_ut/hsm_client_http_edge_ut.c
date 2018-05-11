@@ -222,10 +222,16 @@ static void my_uhttp_client_dowork(HTTP_CLIENT_HANDLE handle)
     const unsigned char* content = content_available ? TEST_REPLY_JSON : NULL;
     
     if (g_uhttp_client_dowork_call_count == 0)
+    {
         g_on_http_open(g_http_open_ctx, http_open_reason);
+    }
     else if (g_uhttp_client_dowork_call_count == 1)
     {
         g_on_http_reply_recv(g_http_reply_recv_ctx, http_reply_recv_reason, content, 1, test_status_code_in_callback, TEST_HTTP_HEADERS_HANDLE);
+    }
+    else
+    {
+        ASSERT_FAIL("Invoked mock of do_work too many times");
     }
     g_uhttp_client_dowork_call_count++;
 }
@@ -235,7 +241,6 @@ TEST_SUITE_INITIALIZE(suite_init)
 {
     (void)umock_c_init(on_umock_c_error);
 
-    //REGISTER_TYPE(time_t, time_t);
     REGISTER_UMOCK_ALIAS_TYPE(time_t, long long);
     REGISTER_UMOCK_ALIAS_TYPE(STRING_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(BUFFER_HANDLE, void*);
@@ -322,6 +327,9 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(socketio_get_interface_description, TEST_SOCKETIO_INTERFACE_DESCRIPTION);
 
     REGISTER_GLOBAL_MOCK_RETURN(get_time, TEST_TIME_T);
+
+    REGISTER_GLOBAL_MOCK_RETURN(STRING_concat, 0);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(STRING_concat, 1);
 
     REGISTER_GLOBAL_MOCK_RETURN(BUFFER_u_char, TEST_BUFFER_1);
 }
@@ -624,6 +632,76 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_http_timeout)
 {
     timed_out = true;
     test_http_failure_impl();
+}
+
+TEST_FUNCTION(hsm_client_http_edge_sign_data_http_fail)
+{
+    // arrange
+    int negativeTestsInitResult = umock_c_negative_tests_init();
+    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+    setup_hsm_client_http_edge_create_mock(TEST_ENV_EDGEURI, true);
+    
+    HSM_CLIENT_HANDLE sec_handle = hsm_client_http_edge_create();
+    unsigned char* signed_value = NULL;
+    size_t signed_len;
+    
+    ASSERT_IS_NOT_NULL(sec_handle);
+    
+    umock_c_reset_all_calls();
+    
+    set_expected_calls_hsm_client_http_edge_sign_data();
+
+    umock_c_negative_tests_snapshot();
+
+    size_t calls_cannot_fail[] = {
+        3, // STRING_c_str
+        4, // STRING_c_str
+        10, // STRING_c_str
+        14, // json_free_serialized_string
+        15, // json_object_clear
+        16, // STRING_delete
+        17, // STRING_delete
+        18, // STRING_delete
+        19, // socketio_get_interface_description
+        24, // STRING_c_str
+        25, // BUFFER_u_char
+        26, // get_time
+        28, // uhttp_client_dowork
+        29, // get_time
+        30, // uhttp_client_dowork
+        32, // get_time
+        33, // HTTPHeaders_Free
+        34, // uhttp_client_destroy
+        35, // STRING_delete
+        41, // json_object_clear
+        42, // BUFFER_delete
+        43 // BUFFER_delete
+    };
+
+    // act
+    size_t count = umock_c_negative_tests_call_count();
+    for (size_t index = 0; index < count; index++)
+    {
+        if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail)/sizeof(calls_cannot_fail[0])) != 0)
+        {
+            continue;
+        }
+        g_uhttp_client_dowork_call_count = 0;        
+    
+        umock_c_negative_tests_reset();
+        umock_c_negative_tests_fail_call(index);
+        
+        char tmp_msg[64];
+        sprintf(tmp_msg, "IoTHubClient_LL_CreateForModule failure in test %zu/%zu", index, count);
+        int result = hsm_client_http_edge_sign_data(sec_handle, TEST_SIGNING_DATA, TEST_SIGNING_DATA_LENGTH, &signed_value, &signed_len);
+        ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, result, 0, tmp_msg);
+    }
+
+    // cleanup
+    
+    hsm_client_http_edge_destroy(sec_handle);    
+    umock_c_negative_tests_deinit();
 }
 
 
