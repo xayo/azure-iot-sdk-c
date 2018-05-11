@@ -145,6 +145,17 @@ static int test_mallocAndStrcpy_s(char** destination, const char* source)
     return 0;
 }
 
+static void my_STRING_delete(STRING_HANDLE h)
+{
+    if ((h == TEST_STRING_HANDLE1) || (h == TEST_STRING_HANDLE2) || (h == TEST_STRING_HANDLE3))
+    {
+        return;
+    }
+
+    my_gballoc_free((void*)h);
+}
+
+
 HSM_HTTP_EDGE_SIGNING_CONTEXT* edge_signing_context;
 static int g_uhttp_client_dowork_call_count;
 static ON_HTTP_OPEN_COMPLETE_CALLBACK g_on_http_open;
@@ -304,7 +315,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(BUFFER_create, TEST_BUFFER_HANDLE);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(BUFFER_create, NULL);
 
-    
+    REGISTER_GLOBAL_MOCK_HOOK(STRING_delete, my_STRING_delete);   
 
     REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_create, my_uhttp_client_create);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_create, NULL);
@@ -583,7 +594,9 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_succeed)
     ASSERT_ARE_EQUAL(int, result, 0);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
-    hsm_client_http_edge_destroy(sec_handle);    
+
+    hsm_client_http_edge_destroy(sec_handle);
+    free(signed_value);
 }
 
 static void test_http_failure_impl()

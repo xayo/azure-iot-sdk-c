@@ -191,6 +191,7 @@ static int my_hsm_client_sign_data(HSM_CLIENT_HANDLE handle, const unsigned char
     (void)data;
     (void)data_len;
     *key = (unsigned char*)my_gballoc_malloc(1);
+    **key = 0;
     *key_len = 1;
     return 0;
 }
