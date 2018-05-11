@@ -90,7 +90,7 @@ static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
 
 IOTHUB_CLIENT_LL_HANDLE test_IoTHubClient_LL_CreateForModuleInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
 {
-    ASSERT_ARE_EQUAL_WITH_MSG(bool, true, config->protocol == TEST_TRANSPORT_PROVIDER, "Protocol to configure does not mach")
+    ASSERT_ARE_EQUAL_WITH_MSG(bool, true, config->protocol == TEST_TRANSPORT_PROVIDER, "Protocol to configure does not mach");
     ASSERT_ARE_EQUAL_WITH_MSG(int, 0, strcmp(TEST_ENV_DEVICEID, config->deviceId), "DeviceIds don't match");
     ASSERT_ARE_EQUAL_WITH_MSG(bool, true, config->deviceKey == NULL, "deviceKey is not NULL");
     ASSERT_ARE_EQUAL_WITH_MSG(bool, true, config->deviceSasToken == NULL, "deviceSasToken is not NULL");
