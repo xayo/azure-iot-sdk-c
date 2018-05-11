@@ -76,6 +76,15 @@ static const char* TEST_CONST_CHAR_PTR = "TestConstChar";
 static JSON_Status TEST_JSON_STATUS = 0;
 static char* TEST_CHAR_PTR = "TestString";
 
+static const char * const TEST_ENV_EDGEVERSION = "Test-EdgeVersion";
+static const char * const TEST_ENV_EDGEMODULEID = "Test-ModuleId";
+static const char * const TEST_ENV_EDGEURI = "http://127.0.0.1:8080";
+static const char * const TEST_ENV_EDGEURI_BAD_PROTOCOL = "badprotocol://127.0.0.1:8080";
+static const char * const TEST_ENV_EDGEURI_NO_PORT = "http://127.0.0.1";
+static const char * const TEST_ENV_EDGEURI_NO_ADDRESS = "http://:8080";
+
+static const unsigned char* TEST_SIGNING_DATA = (const unsigned char* )"Test/Data/To/Sign\nExpiry";
+static const int TEST_SIGNING_DATA_LENGTH = sizeof(TEST_SIGNING_DATA) - 1;
 
 
 
@@ -322,7 +331,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_destroy, my_uhttp_client_destroy);
 
     REGISTER_GLOBAL_MOCK_HOOK(uhttp_client_open, my_uhttp_client_open);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_open, HTTP_CALLBACK_REASON_OPEN_FAILED);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_open, HTTP_CLIENT_ERROR);
 
     REGISTER_GLOBAL_MOCK_RETURN(HTTPHeaders_Alloc, TEST_HTTP_HEADERS_HANDLE);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(HTTPHeaders_Alloc, NULL);
@@ -383,13 +392,6 @@ static int should_skip_index(size_t current_index, const size_t skip_array[], si
     }
     return result;
 }
-
-static const char* TEST_ENV_EDGEVERSION = "Test-EdgeVersion";
-static const char* TEST_ENV_EDGEMODULEID = "Test-ModuleId";
-static const char* TEST_ENV_EDGEURI = "http://127.0.0.1:8080";
-static const char* TEST_ENV_EDGEURI_BAD_PROTOCOL = "badprotocol://127.0.0.1:8080";
-static const char* TEST_ENV_EDGEURI_NO_PORT = "http://127.0.0.1";
-static const char* TEST_ENV_EDGEURI_NO_ADDRESS = "http://:8080";
 
 
 static void setup_hsm_client_http_edge_create_mock(const char* edge_uri_env, bool valid_edge_uri)
@@ -527,7 +529,7 @@ static void set_expected_calls_send_and_poll_http_signing_request()
 {
     STRICT_EXPECTED_CALL(BUFFER_u_char(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG)).SetReturn(TEST_TIME_T);
-    STRICT_EXPECTED_CALL(uhttp_client_execute_request(IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(uhttp_client_execute_request(IGNORED_PTR_ARG, HTTP_CLIENT_REQUEST_POST, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(get_time(IGNORED_NUM_ARG)).SetReturn(timed_out ? TEST_TIME_FOR_TIMEOUT_T : TEST_TIME_T);
     STRICT_EXPECTED_CALL(uhttp_client_dowork(IGNORED_NUM_ARG));
@@ -563,9 +565,6 @@ static void set_expected_calls_parse_json_signing_response()
     STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
 }
-
-static const unsigned char* TEST_SIGNING_DATA = (const unsigned char* )"Test/Data/To/Sign\nExpiry";
-static const int TEST_SIGNING_DATA_LENGTH = sizeof(TEST_SIGNING_DATA) - 1;
 
 static void set_expected_calls_hsm_client_http_edge_sign_data()
 {
