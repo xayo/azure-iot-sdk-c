@@ -50,6 +50,7 @@ static int real_strcmp(const char* str1, const char* str2)
 #define ENABLE_MOCKS
 #include "iothub_transport_ll.h"
 #include "azure_uamqp_c/cbs.h"
+#include "azure_c_shared_utility/strings.h"
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
