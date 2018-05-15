@@ -38,7 +38,7 @@ static void my_gballoc_free(void* ptr)
 #include "azure_c_shared_utility/umock_c_prod.h"
 #undef ENABLE_MOCKS
 
-#include "iothub_client_authorization.h"
+#include "internal/iothub_client_authorization.h"
 
 static const char* DEVICE_ID = "device_id";
 static const char* DEVICE_KEY = "device_key";

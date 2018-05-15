@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 #ifndef DONT_USE_UPLOADTOBLOB
-#include "iothub_client_ll_uploadtoblob.h"
+#include "internal/iothub_client_ll_uploadtoblob.h"
 #endif
 
 IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromConnectionString(const char* connectionString, IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
