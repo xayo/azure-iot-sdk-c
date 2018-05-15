@@ -104,7 +104,8 @@ static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
 #define TEST_DEVICES_PATH_STRING_HANDLE                   (STRING_HANDLE)0x4453
 #define SAS_TOKEN_TYPE                                    "servicebus.windows.net:sastoken"
 #define TEST_OPTIONHANDLER_HANDLE                         (OPTIONHANDLER_HANDLE)0x4455
-#define TEST_AUTHORIZATION_HANDLE                         (IOTHUB_AUTHORIZATION_HANDLE)0x4456
+#define TEST_AUTHORIZATION_MODULE_HANDLE                  (IOTHUB_AUTHORIZATION_HANDLE)0x4456
+
 
 static AUTHENTICATION_CONFIG global_auth_config;
 
@@ -155,11 +156,13 @@ static int TEST_cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char
     return TEST_cbs_put_token_async_return;
 }
 
-static char* TEST_IoTHubClient_Auth_Get_SasToken(IOTHUB_AUTHORIZATION_HANDLE handle, const char* scope, size_t expiry_time_relative_seconds)
+static char* TEST_IoTHubClient_Auth_Get_SasToken(IOTHUB_AUTHORIZATION_HANDLE handle, const char* scope, size_t expiry_time_relative_seconds, const char* keyname)
 {
     (void)handle;
     (void)scope;
     (void)expiry_time_relative_seconds;
+    (void)keyname;
+
     char* result;
     size_t len = strlen(TEST_USER_DEFINED_SAS_TOKEN);
     result = (char*)real_malloc(len+1);
@@ -316,7 +319,7 @@ static AUTHENTICATION_CONFIG* get_auth_config(USE_DEVICE_KEYS_OR_SAS_TOKEN_OPTIO
     global_auth_config.on_state_changed_callback_context = TEST_ON_STATE_CHANGED_CALLBACK_CONTEXT;
     global_auth_config.on_error_callback = TEST_on_error_callback;
     global_auth_config.on_error_callback_context = TEST_ON_ERROR_CALLBACK_CONTEXT;
-    global_auth_config.authorization_module = TEST_AUTHORIZATION_HANDLE;
+    global_auth_config.authorization_module = TEST_AUTHORIZATION_MODULE_HANDLE;
     return &global_auth_config;
 }
 
@@ -343,16 +346,16 @@ static void set_expected_calls_for_authentication_create(AUTHENTICATION_CONFIG* 
     (void)config;
 
     EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_DeviceId(TEST_AUTHORIZATION_HANDLE));
+    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_DeviceId(TEST_AUTHORIZATION_MODULE_HANDLE));
     STRICT_EXPECTED_CALL(STRING_construct(TEST_IOTHUB_HOST_FQDN)).SetReturn(TEST_IOTHUB_HOST_FQDN_STRING_HANDLE);
 
     if (testing_modules)
     {
-        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_ModuleId(TEST_AUTHORIZATION_HANDLE)).SetReturn(TEST_MODULE_ID);
+        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_ModuleId(TEST_AUTHORIZATION_MODULE_HANDLE)).SetReturn(TEST_MODULE_ID);
     }
     else
     {
-        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_ModuleId(TEST_AUTHORIZATION_HANDLE)).SetReturn(NULL);
+        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_ModuleId(TEST_AUTHORIZATION_MODULE_HANDLE)).SetReturn(NULL);
     }
 }
 
@@ -378,16 +381,16 @@ static void set_expected_calls_for_put_SAS_token_to_cbs(AUTHENTICATION_HANDLE ha
         sas_token_char_ptr = TEST_GENERATED_SAS_TOKEN;
     }
 
-    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_Credential_Type(TEST_AUTHORIZATION_HANDLE)).SetReturn(cred_type);
+    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_Credential_Type(TEST_AUTHORIZATION_MODULE_HANDLE)).SetReturn(cred_type);
     if (sas_token == TEST_USER_DEFINED_SAS_TOKEN_STRING_HANDLE)
     {
-        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Is_SasToken_Valid(TEST_AUTHORIZATION_HANDLE));
+        STRICT_EXPECTED_CALL(IoTHubClient_Auth_Is_SasToken_Valid(TEST_AUTHORIZATION_MODULE_HANDLE));
     }
     else
     {
         STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG));
     }
-    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_SasToken(TEST_AUTHORIZATION_HANDLE, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(IoTHubClient_Auth_Get_SasToken(TEST_AUTHORIZATION_MODULE_HANDLE, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG));
 
     STRICT_EXPECTED_CALL(STRING_c_str(TEST_DEVICES_PATH_STRING_HANDLE)).SetReturn(TEST_DEVICES_PATH);
     STRICT_EXPECTED_CALL(cbs_put_token_async(TEST_CBS_HANDLE, SAS_TOKEN_TYPE, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, handle));

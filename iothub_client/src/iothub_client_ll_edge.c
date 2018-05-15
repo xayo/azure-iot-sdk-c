@@ -7,6 +7,7 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/envvariable.h"
+#include "iothub_module_client_ll.h"
 #include "iothub_client_private.h"
 #include "azure_prov_client/iothub_security_factory.h"
 
@@ -104,9 +105,9 @@ static int retrieve_edge_environment_variabes(EDGE_ENVIRONMENT_VARIABLES *edge_e
     return result;
 }
 
-IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
+IOTHUB_MODULE_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
-    IOTHUB_CLIENT_LL_HANDLE result;
+    IOTHUB_MODULE_CLIENT_LL_HANDLE result;
     EDGE_ENVIRONMENT_VARIABLES edge_environment_variables;
 
     memset(&edge_environment_variables, 0, sizeof(edge_environment_variables));
@@ -118,7 +119,7 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRAN
     }
     else if (edge_environment_variables.connection_string != NULL)
     {
-        result = IoTHubClient_LL_CreateFromConnectionString(edge_environment_variables.connection_string, protocol);
+        result = IoTHubModuleClient_LL_CreateFromConnectionString(edge_environment_variables.connection_string, protocol);
     }
     else if (iothub_security_init(IOTHUB_SECURITY_TYPE_HTTP_EDGE) != 0)
     {
@@ -135,7 +136,7 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRAN
         client_config.iotHubName =  edge_environment_variables.iothub_name;
         client_config.iotHubSuffix = edge_environment_variables.iothub_suffix;
         client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
-        result = IoTHubClient_LL_CreateFromEnvironmentInternal(&client_config, edge_environment_variables.module_id);
+        result = (IOTHUB_MODULE_CLIENT_LL_HANDLE)IoTHubClientCore_LL_CreateFromEnvironmentInternal(&client_config, edge_environment_variables.module_id);
     }
 
     free(edge_environment_variables.iothub_buffer);

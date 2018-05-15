@@ -12,21 +12,32 @@ compileAsC99()
 
 set(iothub_client_c_files
     ./src/iothub_client.c
+    ./src/iothub_client_core.c
+    ./src/iothub_client_core_ll.c
     ./src/iothub_client_diagnostic.c
     ./src/iothub_client_ll.c
+    ./src/iothub_device_client.c
+    ./src/iothub_device_client_ll.c
     ./src/iothub_message.c
+    ./src/iothub_module_client.c
+    ./src/iothub_module_client_ll.c
     ./src/iothubtransport.c
     ./src/version.c
 )
 
 set(iothub_client_h_files
+    ./inc/iothub_client_core.h
+    ./inc/iothub_client_core_ll.h
     ./inc/blob.h
     ./inc/iothub_client.h
+    ./inc/iothub_client_common.h
     ./inc/iothub_client_ll.h
     ./inc/iothub_client_diagnostic.h
     ./inc/iothub_client_options.h
     ./inc/iothub_client_private.h
     ./inc/iothub_client_version.h
+    ./inc/iothub_device_client.h
+    ./inc/iothub_device_client_ll.h
     ./inc/iothub_transport_ll.h
     ./inc/iothub_message.h
     ./inc/iothubtransport.h
@@ -52,12 +63,14 @@ if(NOT dont_use_uploadtoblob)
     )
 endif()
 
+#this is around for back compat only
 if (${use_prov_client})
     set(iothub_client_h_files
         ${iothub_client_h_files}
         ./inc/iothub_client_hsm_ll.h
     )
 endif()
+#end back compat only
 
 if (${use_edge_modules})
     set(iothub_client_c_files
@@ -186,11 +199,15 @@ if(${use_mqtt})
     )
 
     set(iothub_client_mqtt_transport_c_files
+        ./src/iothub_client_authorization.c
+        ./src/iothub_client_retry_control.c
         ./src/iothubtransport_mqtt_common.c
         ./src/iothubtransportmqtt.c
     )
 
     set(iothub_client_mqtt_transport_h_files
+        ./inc/iothub_client_authorization.h
+        ./inc/iothub_client_retry_control.h
         ./inc/iothubtransport_mqtt_common.h
         ./inc/iothubtransportmqtt.h
     )
@@ -355,13 +372,12 @@ IF(WIN32)
     add_definitions(-DGB_MEASURE_MEMORY_FOR_THIS -DGB_DEBUG_ALLOC)
 ENDIF(WIN32)
 
-if(${dont_use_uploadtoblob})
-    set(iothub_def_file ./src/iothub_client_dll_no_upload.def)
-else()
-    set(iothub_def_file ./src/iothub_client_dll.def)
-endif()
-
 if (${build_as_dynamic})
+    set(iothub_def_file ./src/iothub_client_dll.def)
+    if(NOT ${dont_use_uploadtoblob})
+        set(iothub_def_file ${iothub_def_file} ./src/upload_to_blob.def)
+    endif()
+
     add_library(iothub_client_dll SHARED
         ${iothub_client_c_files}
         ${iothub_client_h_files}
