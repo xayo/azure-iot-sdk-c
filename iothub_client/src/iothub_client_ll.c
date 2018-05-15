@@ -985,8 +985,8 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateImpl(const IOTHUB_CLIENT_CONFIG* c
 }
 
 
-// Note: IoTHubClient_LL_CreateForModuleInternal is for private use only presently.
-IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModuleInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
+// Note: IoTHubClient_LL_CreateFromEnvironmentInternal is for private use only presently.
+IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironmentInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
 {
     return IoTHubClient_LL_CreateImpl(config, module_id, true);
 }

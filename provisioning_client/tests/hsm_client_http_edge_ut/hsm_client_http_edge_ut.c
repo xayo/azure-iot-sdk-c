@@ -705,7 +705,7 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_http_fail)
         umock_c_negative_tests_fail_call(index);
         
         char tmp_msg[64];
-        sprintf(tmp_msg, "IoTHubClient_LL_CreateForModule failure in test %zu/%zu", index, count);
+        sprintf(tmp_msg, "hsm_client_http_edge_sign_data failure in test %zu/%zu", index, count);
         int result = hsm_client_http_edge_sign_data(sec_handle, TEST_SIGNING_DATA, TEST_SIGNING_DATA_LENGTH, &signed_value, &signed_len);
         ASSERT_ARE_NOT_EQUAL_WITH_MSG(int, result, 0, tmp_msg);
     }

@@ -3,10 +3,13 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/envvariable.h"
 #include "iothub_client_private.h"
+#include "azure_prov_client/iothub_security_factory.h"
+
 
 static const char* ENVIRONMENT_VAR_EDGEHUBCONNECTIONSTRING = "EdgeHubConnectionString";
 static const char* ENVIRONMENT_VAR_EDGEAUTHSCHEME = "IOTEDGE_AUTHSCHEME";
@@ -101,7 +104,7 @@ static int retrieve_edge_environment_variabes(EDGE_ENVIRONMENT_VARIABLES *edge_e
     return result;
 }
 
-IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
+IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
     IOTHUB_CLIENT_LL_HANDLE result;
     EDGE_ENVIRONMENT_VARIABLES edge_environment_variables;
@@ -117,6 +120,11 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(IOTHUB_CLIENT_TRANSPORT_
     {
         result = IoTHubClient_LL_CreateFromConnectionString(edge_environment_variables.connection_string, protocol);
     }
+    else if (iothub_security_init(IOTHUB_SECURITY_TYPE_HTTP_EDGE) != 0)
+    {
+        LogError("iothub_security_init failed");
+        result = NULL;
+    }
     else
     {
         IOTHUB_CLIENT_CONFIG client_config;
@@ -127,7 +135,7 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateForModule(IOTHUB_CLIENT_TRANSPORT_
         client_config.iotHubName =  edge_environment_variables.iothub_name;
         client_config.iotHubSuffix = edge_environment_variables.iothub_suffix;
         client_config.protocolGatewayHostName = edge_environment_variables.gatewayhostname;
-        result = IoTHubClient_LL_CreateForModuleInternal(&client_config, edge_environment_variables.module_id);
+        result = IoTHubClient_LL_CreateFromEnvironmentInternal(&client_config, edge_environment_variables.module_id);
     }
 
     free(edge_environment_variables.iothub_buffer);
