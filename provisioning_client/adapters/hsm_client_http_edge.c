@@ -14,7 +14,7 @@
 #include "azure_c_shared_utility/base64.h"
 #include "azure_uhttp_c/uhttp.h"
 
-#include "azure_c_shared_utility/env_variable.h"
+#include "azure_c_shared_utility/envvariable.h"
 
 #include "parson.h"
 

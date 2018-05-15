@@ -33,7 +33,7 @@ void* my_gballoc_realloc(void* ptr, size_t size)
 
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
-#include "azure_c_shared_utility/env_variable.h"
+#include "azure_c_shared_utility/envvariable.h"
 #include "iothub_client_ll.h"
 #include "iothub_client_private.h"
 #undef ENABLE_MOCKS

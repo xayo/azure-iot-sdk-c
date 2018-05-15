@@ -64,7 +64,7 @@ static void _Bool_ToString(char* string, size_t bufferSize, _Bool val)
 #include "azure_c_shared_utility/agenttime.h"
 #include "azure_c_shared_utility/socketio.h"
 #include "azure_uhttp_c/uhttp.h"
-#include "azure_c_shared_utility/env_variable.h"
+#include "azure_c_shared_utility/envvariable.h"
 #include "azure_c_shared_utility/base64.h"
 #include "azure_c_shared_utility/urlencode.h"
 

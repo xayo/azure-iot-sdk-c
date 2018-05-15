@@ -63,11 +63,13 @@ if (${use_edge_modules})
     set(iothub_client_c_files
         ${iothub_client_c_files}
         ./src/iothub_client_ll_edge.c
+        ./src/iothub_client_edge.c
     )
     
     set(iothub_client_h_files
         ${iothub_client_h_files}
         ./inc/iothub_client_ll_edge.h
+        ./inc/iothub_client_edge.h
     )
 endif()
 

@@ -99,6 +99,8 @@ endif()
 if(${use_edge_modules})
     set(use_prov_client ON)
     set(use_http ON)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_EDGE_MODULES")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_EDGE_MODULES")
 endif()
 
 # Set Provisioning Information

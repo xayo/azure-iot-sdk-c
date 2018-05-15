@@ -3,19 +3,10 @@
 
 #include <stdlib.h>
 #include <string.h>
-// TODO: Remove unneeded headers here.
 #include "azure_c_shared_utility/optimize_size.h"
-#include "azure_c_shared_utility/gballoc.h"
-#include "azure_c_shared_utility/string_tokenizer.h"
-#include "azure_c_shared_utility/doublylinkedlist.h"
 #include "azure_c_shared_utility/xlogging.h"
-#include "azure_c_shared_utility/tickcounter.h"
-#include "azure_c_shared_utility/constbuffer.h"
-#include "azure_c_shared_utility/platform.h"
-#include "azure_c_shared_utility/singlylinkedlist.h"
-#include "azure_c_shared_utility/env_variable.h"
+#include "azure_c_shared_utility/envvariable.h"
 #include "iothub_client_private.h"
-
 
 static const char* ENVIRONMENT_VAR_EDGEHUBCONNECTIONSTRING = "EdgeHubConnectionString";
 static const char* ENVIRONMENT_VAR_EDGEAUTHSCHEME = "IOTEDGE_AUTHSCHEME";

@@ -192,7 +192,6 @@ PROV_AUTH_HANDLE prov_auth_create()
                 result = NULL;
             }
         }
-        // TODO: Understand how Edge TPM fits in here.
 
         if (result != NULL)
         {
