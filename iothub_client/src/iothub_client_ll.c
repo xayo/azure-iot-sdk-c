@@ -20,11 +20,6 @@ IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromConnectionString(const char* c
     return (IOTHUB_CLIENT_LL_HANDLE)IoTHubClientCore_LL_CreateFromConnectionString(connectionString, protocol);
 }
 
-IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromEnvironmentInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
-{
-    return (IOTHUB_CLIENT_LL_HANDLE)IoTHubClientCore_LL_CreateFromEnvironmentInternal(config, module_id);
-}
-
 IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_Create(const IOTHUB_CLIENT_CONFIG* config)
 {
     return (IOTHUB_CLIENT_LL_HANDLE)IoTHubClientCore_LL_Create(config);

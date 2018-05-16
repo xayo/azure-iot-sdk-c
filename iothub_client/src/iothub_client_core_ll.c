@@ -984,10 +984,13 @@ IOTHUB_CLIENT_CORE_LL_HANDLE IoTHubClientCore_LL_Create(const IOTHUB_CLIENT_CONF
     return IoTHubClientCore_LL_CreateImpl(config, NULL, false);
 }
 
-IOTHUB_CLIENT_CORE_LL_HANDLE IoTHubClientCore_LL_CreateFromEnvironmentInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
+#ifdef USE_EDGE_MODULES
+IOTHUB_CLIENT_CORE_LL_HANDLE IoTHubClientCore_LL_CreateFromEnvironment(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
 {
     return IoTHubClientCore_LL_CreateImpl(config, module_id, true);
 }
+#endif
+
 
 IOTHUB_CLIENT_CORE_LL_HANDLE IoTHubClientCore_LL_CreateWithTransport(const IOTHUB_CLIENT_DEVICE_CONFIG * config)
 {

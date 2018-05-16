@@ -678,7 +678,7 @@ BEGIN_TEST_SUITE(iothub_auth_client_ut)
         IOTHUB_SECURITY_HANDLE xda_handle = iothub_device_auth_create();
         umock_c_reset_all_calls();
 
-        setup_iothub_device_auth_generate_credentials_mocks();
+        setup_iothub_device_auth_generate_credentials_mocks(true, false);
 
         //act
         void* result = iothub_device_auth_generate_credentials(xda_handle, &g_test_sas_cred_no_keyname);

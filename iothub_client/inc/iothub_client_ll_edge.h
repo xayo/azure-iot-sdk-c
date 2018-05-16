@@ -9,9 +9,13 @@
 #ifndef IOTHUB_CLIENT_LL_EDGE_H
 #define IOTHUB_CLIENT_LL_EDGE_H
 
+#ifndef USE_EDGE_MODULES
+#error Use of this header requires EDGE_MODULES to be specified during SDK creation time
+#endif
+
 #include "azure_c_shared_utility/macro_utils.h"
 #include "azure_c_shared_utility/umock_c_prod.h"
-#include "iothub_client_ll.h"
+#include "iothub_module_client_ll.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -28,7 +32,7 @@ extern "C"
     *           invoking other functions for IoT Hub client and @c NULL on failure.
 
     */
-    MOCKABLE_FUNCTION(, IOTHUB_CLIENT_LL_HANDLE, IoTHubClient_LL_CreateFromEnvironment, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol);
+    MOCKABLE_FUNCTION(, IOTHUB_MODULE_CLIENT_LL_HANDLE, IoTHubModuleClient_LL_CreateFromEnvironment, IOTHUB_CLIENT_TRANSPORT_PROVIDER, protocol);
 
 
 #ifdef __cplusplus

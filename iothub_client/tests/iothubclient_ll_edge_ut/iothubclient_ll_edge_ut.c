@@ -37,6 +37,7 @@ void* my_gballoc_realloc(void* ptr, size_t size)
 #include "iothub_client_private.h"
 #include "azure_prov_client/iothub_security_factory.h"
 #include "azure_c_shared_utility/gballoc.h"
+#include "iothub_module_client_ll.h"
 #undef ENABLE_MOCKS
 
 #include "iothub_client_ll_edge.h"
@@ -89,7 +90,7 @@ static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
     ASSERT_FAIL("umock_c reported error");
 }
 
-IOTHUB_CLIENT_LL_HANDLE test_IoTHubClientCore_LL_CreateFromEnvironmentInternal(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
+IOTHUB_CLIENT_LL_HANDLE test_IoTHubClientCore_LL_CreateFromEnvironment(const IOTHUB_CLIENT_CONFIG* config, const char* module_id)
 {
     ASSERT_ARE_EQUAL_WITH_MSG(bool, true, (config->protocol == TEST_TRANSPORT_PROVIDER), "Protocol to configure does not mach");
     ASSERT_ARE_EQUAL_WITH_MSG(int, 0, strcmp(TEST_ENV_DEVICEID, config->deviceId), "DeviceIds don't match");
@@ -124,11 +125,11 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(environment_get_variable, "");
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(environment_get_variable, NULL);
 
-    REGISTER_GLOBAL_MOCK_RETURN(IoTHubClient_LL_CreateFromConnectionString, (IOTHUB_CLIENT_LL_HANDLE)1);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(IoTHubClient_LL_CreateFromConnectionString, NULL);
+    REGISTER_GLOBAL_MOCK_RETURN(IoTHubModuleClient_LL_CreateFromConnectionString, (IOTHUB_MODULE_CLIENT_LL_HANDLE)1);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(IoTHubModuleClient_LL_CreateFromConnectionString, NULL);
 
-    REGISTER_GLOBAL_MOCK_HOOK(IoTHubClientCore_LL_CreateFromEnvironmentInternal, test_IoTHubClientCore_LL_CreateFromEnvironmentInternal);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(IoTHubClientCore_LL_CreateFromEnvironmentInternal, NULL);
+    REGISTER_GLOBAL_MOCK_HOOK(IoTHubClientCore_LL_CreateFromEnvironment, test_IoTHubClientCore_LL_CreateFromEnvironment);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(IoTHubClientCore_LL_CreateFromEnvironment, NULL);
 
     REGISTER_GLOBAL_MOCK_HOOK(mallocAndStrcpy_s, test_mallocAndStrcpy_s);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(mallocAndStrcpy_s, 1);
@@ -139,7 +140,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(iothub_security_init, 1);
 
     REGISTER_UMOCK_ALIAS_TYPE(IOTHUB_CLIENT_TRANSPORT_PROVIDER, void*);
-    REGISTER_UMOCK_ALIAS_TYPE(IOTHUB_CLIENT_LL_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(IOTHUB_MODULE_CLIENT_LL_HANDLE, void*);
 
     REGISTER_UMOCK_ALIAS_TYPE(IOTHUB_SECURITY_TYPE, void*);
 }
@@ -185,7 +186,7 @@ static void set_expected_environment_var_setup(const char* hostname_env, bool in
     STRICT_EXPECTED_CALL(mallocAndStrcpy_s(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     if (invoke_security_init)
     {
-        STRICT_EXPECTED_CALL(iothub_security_init(IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(iothub_security_init(IOTHUB_SECURITY_TYPE_HTTP_EDGE));
     }
 }
 
@@ -193,7 +194,7 @@ static void set_expected_environment_var_setup(const char* hostname_env, bool in
 TEST_FUNCTION(IoTHubClient_LL_CreateForModule_use_connection_string)
 {
     STRICT_EXPECTED_CALL(environment_get_variable(IGNORED_PTR_ARG)).SetReturn(TEST_ENV_CONNECTION_STRING);
-    STRICT_EXPECTED_CALL(IoTHubClient_LL_CreateFromConnectionString(TEST_ENV_CONNECTION_STRING, TEST_TRANSPORT_PROVIDER)).SetReturn(TEST_CLIENT_HANDLE_FROM_CONNSTR);
+    STRICT_EXPECTED_CALL(IoTHubModuleClient_LL_CreateFromConnectionString(TEST_ENV_CONNECTION_STRING, TEST_TRANSPORT_PROVIDER)).SetReturn(TEST_CLIENT_HANDLE_FROM_CONNSTR);
     STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
 
     IOTHUB_MODULE_CLIENT_LL_HANDLE h = IoTHubModuleClient_LL_CreateFromEnvironment(TEST_TRANSPORT_PROVIDER);
@@ -206,7 +207,7 @@ TEST_FUNCTION(IoTHubClient_LL_CreateForModule_use_connection_string)
 TEST_FUNCTION(IoTHubModuleClient_LL_CreateFromEnvironment_success)
 {
     set_expected_environment_var_setup(TEST_ENV_HOSTNAME, true);
-    STRICT_EXPECTED_CALL(IoTHubModuleClient_LL_CreateFromEnvironmentInternal(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(IoTHubClientCore_LL_CreateFromEnvironment(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
 
     IOTHUB_MODULE_CLIENT_LL_HANDLE h = IoTHubModuleClient_LL_CreateFromEnvironment(TEST_TRANSPORT_PROVIDER);
@@ -261,7 +262,7 @@ TEST_FUNCTION(IoTHubModuleClient_LL_CreateFromEnvironment_failures)
     ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     set_expected_environment_var_setup(TEST_ENV_HOSTNAME, true);
-    STRICT_EXPECTED_CALL(IoTHubModuleClient_LL_CreateFromEnvironmentInternal(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(IoTHubClientCore_LL_CreateFromEnvironment(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
 
     umock_c_negative_tests_snapshot();
@@ -284,7 +285,7 @@ TEST_FUNCTION(IoTHubModuleClient_LL_CreateFromEnvironment_failures)
         umock_c_negative_tests_fail_call(index);
         
 
-        char tmp_msg[64];
+        char tmp_msg[128];
         sprintf(tmp_msg, "IoTHubModuleClient_LL_CreateFromEnvironment failure in test %zu/%zu", index, count);
         IOTHUB_MODULE_CLIENT_LL_HANDLE h = IoTHubModuleClient_LL_CreateFromEnvironment(TEST_TRANSPORT_PROVIDER);
 
